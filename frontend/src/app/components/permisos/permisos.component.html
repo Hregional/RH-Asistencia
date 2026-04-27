@@ -127,13 +127,13 @@
       <div class="form-row">
         <div class="form-group">
           <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
+          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
             [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
         </div>
         <div class="form-group" *ngIf="!esDiaUnico">
           <label>Fecha de Fin</label>
           <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-            [min]="solicitudForm.fecha_inicio || ''" />
+            [min]="solicitudForm.fecha_inicio || hoy" />
         </div>
         <div class="form-group form-group-small">
           <label>Días hábiles</label>
@@ -204,13 +204,13 @@
     <div class="form-row">
       <div class="form-group">
         <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
+        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
           [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
       </div>
       <div class="form-group" *ngIf="!esDiaUnico">
         <label>Fecha de Fin</label>
         <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-          [min]="solicitudForm.fecha_inicio || ''" />
+          [min]="solicitudForm.fecha_inicio || hoy" />
       </div>
       <div class="form-group form-group-small">
         <label>Días hábiles</label>

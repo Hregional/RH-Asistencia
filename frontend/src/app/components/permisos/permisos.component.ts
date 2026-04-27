@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.service';
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
 
-// ─── Feriados Guatemala ───────────────────────────────────────────────────────
+// ─── Feriados GT
 // Fijos: 'MM-DD'  |  Variables por año: 'YYYY-MM-DD'
 const FERIADOS_FIJOS = new Set([
   '01-01', // Año Nuevo
@@ -13,7 +13,7 @@ const FERIADOS_FIJOS = new Set([
   '09-15', // Independencia
   '10-20', // Revolución
   '11-01', // Todos los Santos
-  '12-24', // Nochebuena (medio día, se cuenta)
+  '12-24', // Nochebuena 
   '12-25', // Navidad
   '12-31', // Fin de año
 ]);
@@ -188,6 +188,9 @@ export class PermisosComponent implements OnInit {
 
   // Advertencia de días excedidos
   diasExcedidos = false;
+
+  // Fecha mínima = hoy
+  readonly hoy = new Date().toISOString().substring(0, 10);
 
   /** True cuando el tipo seleccionado tiene límite de 1 día */
   get esDiaUnico(): boolean {
