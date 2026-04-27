@@ -11,7 +11,7 @@
     font-weight: 700;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
-    
+
     &::after {
       content: '';
       display: block;
@@ -39,7 +39,7 @@
       align-items: center;
       gap: 1rem;
       flex-wrap: wrap;
-      
+
       label {
         font-weight: 600;
         color: #2d3748;
@@ -47,7 +47,8 @@
         min-width: 70px;
       }
 
-      select, input[type="month"] {
+      select,
+      input[type="month"] {
         padding: 0.6rem 0.8rem;
         border-radius: 8px;
         border: 2px solid #e2e8f0;
@@ -55,20 +56,22 @@
         font-size: 0.9rem;
         transition: all 0.3s ease;
         min-width: 180px;
-        
+
         &:focus {
           outline: none;
           border-color: #0b5ed7;
           box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.1);
         }
-        
+
         &:hover {
           border-color: #cbd5e0;
         }
       }
 
 
-          select, input[type="month"], input[type="date"] {
+      select,
+      input[type="month"],
+      input[type="date"] {
         padding: 0.6rem 0.8rem;
         border-radius: 8px;
         border: 2px solid #e2e8f0;
@@ -76,13 +79,13 @@
         font-size: 0.9rem;
         transition: all 0.3s ease;
         min-width: 180px;
-        
+
         &:focus {
           outline: none;
           border-color: #0b5ed7;
           box-shadow: 0 0 0 3px rgba(11, 94, 215, 0.1);
         }
-        
+
         &:hover {
           border-color: #cbd5e0;
         }
@@ -90,50 +93,50 @@
     }
 
     .filtro-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  
-  label {
-    font-weight: 600;
-    color: #2d3748;
-    font-size: 0.9rem;
-  }
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
 
-  // Estilo específico para inputs de fecha
-    input[type="date"] {
-      &::-webkit-calendar-picker-indicator {
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
-        background: #f8f9fa;
-        
-        &:hover {
-          background: #e9ecef;
+      label {
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 0.9rem;
+      }
+
+      // Estilo específico para inputs de fecha
+      input[type="date"] {
+        &::-webkit-calendar-picker-indicator {
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 4px;
+          background: #f8f9fa;
+
+          &:hover {
+            background: #e9ecef;
+          }
+        }
+
+        &::-webkit-datetime-edit {
+          padding: 0.1rem;
+        }
+
+        &::-webkit-datetime-edit-fields-wrapper {
+          background: transparent;
+        }
+
+        &::-webkit-datetime-edit-text {
+          color: #6c757d;
+          padding: 0 0.15rem;
+        }
+
+        &::-webkit-datetime-edit-month-field,
+        &::-webkit-datetime-edit-day-field,
+        &::-webkit-datetime-edit-year-field {
+          color: #495057;
+          padding: 0 0.15rem;
         }
       }
-      
-      &::-webkit-datetime-edit {
-        padding: 0.1rem;
-      }
-      
-      &::-webkit-datetime-edit-fields-wrapper {
-        background: transparent;
-      }
-      
-      &::-webkit-datetime-edit-text {
-        color: #6c757d;
-        padding: 0 0.15rem;
-      }
-      
-      &::-webkit-datetime-edit-month-field,
-      &::-webkit-datetime-edit-day-field,
-      &::-webkit-datetime-edit-year-field {
-        color: #495057;
-        padding: 0 0.15rem;
-      }
     }
-  }
 
     .botones-container {
       display: flex;
@@ -155,11 +158,11 @@
       align-items: center;
       gap: 0.5rem;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-      
+
       &:first-of-type {
         background: linear-gradient(135deg, #0b5ed7, #084298);
         color: white;
-        
+
         &:hover:not(:disabled) {
           background: linear-gradient(135deg, #084298, #06357a);
           transform: translateY(-2px);
@@ -170,7 +173,7 @@
       &:last-of-type {
         background: linear-gradient(135deg, #198754, #0f5132);
         color: white;
-        
+
         &:hover:not(:disabled) {
           background: linear-gradient(135deg, #0f5132, #0a3622);
           transform: translateY(-2px);
@@ -192,7 +195,7 @@
     padding: 3rem;
     color: #4a5568;
     font-size: 1.1rem;
-    
+
     &::before {
       content: '';
       display: block;
@@ -232,7 +235,7 @@
       letter-spacing: 0.5px;
       border: none;
       position: relative;
-      
+
       &::after {
         content: '';
         position: absolute;
@@ -242,7 +245,7 @@
         width: 1px;
         background: rgba(255, 255, 255, 0.3);
       }
-      
+
       &:last-child::after {
         display: none;
       }
@@ -261,28 +264,83 @@
       &:nth-child(even) {
         background: #f8fafc;
       }
-      
+
       &:hover td {
         background: #e3f2fd;
       }
-      
+
       &:last-child td {
         border-bottom: none;
       }
     }
 
     // Estilos específicos para columnas
-    td:nth-child(1), th:nth-child(1) { width: 12%; } // Área
-    td:nth-child(2), th:nth-child(2) { width: 12%; } // Jefe
-    td:nth-child(3), th:nth-child(3) { width: 12%; } // Empleado
-    td:nth-child(4), th:nth-child(4) { width: 10%; } // Cargo
-    td:nth-child(5), th:nth-child(5) { width: 8%; }  // Fecha
-    td:nth-child(6), th:nth-child(6) { width: 8%; }  // Turno
-    td:nth-child(7), th:nth-child(7) { width: 8%; }  // Entrada Prog
-    td:nth-child(8), th:nth-child(8) { width: 8%; }  // Salida Prog
-    td:nth-child(9), th:nth-child(9) { width: 7%; }  // Entrada Real
-    td:nth-child(10), th:nth-child(10) { width: 7%; } // Salida Real
-    td:nth-child(11), th:nth-child(11) { width: 8%; } // Cumplimiento
+    td:nth-child(1),
+    th:nth-child(1) {
+      width: 12%;
+    }
+
+    // Área
+    td:nth-child(2),
+    th:nth-child(2) {
+      width: 12%;
+    }
+
+    // Jefe
+    td:nth-child(3),
+    th:nth-child(3) {
+      width: 12%;
+    }
+
+    // Empleado
+    td:nth-child(4),
+    th:nth-child(4) {
+      width: 10%;
+    }
+
+    // Cargo
+    td:nth-child(5),
+    th:nth-child(5) {
+      width: 8%;
+    }
+
+    // Fecha
+    td:nth-child(6),
+    th:nth-child(6) {
+      width: 8%;
+    }
+
+    // Turno
+    td:nth-child(7),
+    th:nth-child(7) {
+      width: 8%;
+    }
+
+    // Entrada Prog
+    td:nth-child(8),
+    th:nth-child(8) {
+      width: 8%;
+    }
+
+    // Salida Prog
+    td:nth-child(9),
+    th:nth-child(9) {
+      width: 7%;
+    }
+
+    // Entrada Real
+    td:nth-child(10),
+    th:nth-child(10) {
+      width: 7%;
+    }
+
+    // Salida Real
+    td:nth-child(11),
+    th:nth-child(11) {
+      width: 8%;
+    }
+
+    // Cumplimiento
   }
 
   // Estados de cumplimiento con colores
@@ -304,35 +362,37 @@
   // Responsive
   @media (max-width: 1200px) {
     padding: 1rem;
-    
+
     .filtros {
       .filtros-superiores {
         flex-direction: column;
         align-items: stretch;
-        
+
         .filtro-group {
           width: 100%;
-          
-          select, input[type="month"] {
+
+          select,
+          input[type="month"] {
             min-width: 100%;
           }
         }
       }
-      
+
       .botones-container {
         flex-direction: column;
-        
+
         button {
           width: 100%;
           justify-content: center;
         }
       }
     }
-    
+
     .tabla-reporte {
       font-size: 0.8rem;
-      
-      th, td {
+
+      th,
+      td {
         padding: 0.5rem 0.3rem;
       }
     }
@@ -345,13 +405,14 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.reportes-container > * {
+.reportes-container>* {
   animation: fadeIn 0.5s ease-out;
 }
 
@@ -360,7 +421,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  
+
   label {
     font-weight: 600;
     color: #2d3748;
@@ -376,7 +437,7 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
+
   &::before {
     content: '📭';
     display: block;
@@ -411,23 +472,43 @@
   font-weight: 600;
 }
 
+.estado-permiso {
+  color: #e67e22;
+  font-weight: 600;
+}
+
 .cumplimiento-exito {
-  color: #198754;          
+  color: #198754;
   font-weight: 700;
 }
 
 .cumplimiento-advertencia {
-  color: #e67e22;           
+  color: #e67e22;
   font-weight: 700;
 }
 
 .cumplimiento-error {
-  color: #dc3545;          
+  color: #dc3545;
   font-weight: 700;
 }
 
 .cumplimiento-exento {
-  color: #20c997;          
+  color: #20c997;
+  font-weight: 700;
+}
+
+.cumplimiento-permiso {
+  color: #e67e22;
+  font-weight: 700;
+}
+
+.estado-feriado {
+  color: #8e44ad;
+  font-weight: 600;
+}
+
+.cumplimiento-feriado {
+  color: #8e44ad;
   font-weight: 700;
 }
 
@@ -445,7 +526,7 @@
   background: white;
   font-size: 0.9rem;
   transition: all 0.3s ease;
-  
+
   &:focus {
     outline: none;
     border-color: #0b5ed7;
@@ -469,7 +550,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover {
     background: #5a6268;
   }
@@ -495,11 +576,11 @@
   cursor: pointer;
   border-bottom: 1px solid #f1f1f1;
   transition: background-color 0.2s ease;
-  
+
   &:hover {
     background: #f8f9fa;
   }
-  
+
   &:last-child {
     border-bottom: none;
   }
@@ -532,7 +613,7 @@
   justify-content: center;
   width: 100%;
   margin-top: 0.5rem;
-  
+
   button {
     padding: 0.7rem 1.5rem;
     border-radius: 8px;
@@ -545,12 +626,12 @@
     align-items: center;
     gap: 0.5rem;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    
+
     // Botón Generar
     &:first-of-type {
       background: linear-gradient(135deg, #0b5ed7, #084298);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #084298, #06357a);
         transform: translateY(-2px);
@@ -562,7 +643,7 @@
     &.btn-excel {
       background: linear-gradient(135deg, #198754, #0f5132);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #0f5132, #0a3622);
         transform: translateY(-2px);
@@ -574,7 +655,7 @@
     &:last-of-type {
       background: linear-gradient(135deg, #dc3545, #c82333);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #c82333, #a71e2a);
         transform: translateY(-2px);
@@ -595,7 +676,7 @@
 @media (max-width: 768px) {
   .botones-container {
     flex-direction: column;
-    
+
     button {
       width: 100%;
       justify-content: center;
@@ -610,7 +691,7 @@
   justify-content: center;
   width: 100%;
   margin-top: 0.5rem;
-  
+
   button {
     padding: 0.7rem 1.5rem;
     border-radius: 8px;
@@ -623,12 +704,12 @@
     align-items: center;
     gap: 0.5rem;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    
+
     // Botón Generar
     &:first-of-type {
       background: linear-gradient(135deg, #0b5ed7, #084298);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #084298, #06357a);
         transform: translateY(-2px);
@@ -640,7 +721,7 @@
     &.btn-biometrico {
       background: linear-gradient(135deg, #6f42c1, #4a2d8c);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #4a2d8c, #3a236e);
         transform: translateY(-2px);
@@ -652,7 +733,7 @@
     &.btn-excel {
       background: linear-gradient(135deg, #198754, #0f5132);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #0f5132, #0a3622);
         transform: translateY(-2px);
@@ -664,7 +745,7 @@
     &:last-of-type {
       background: linear-gradient(135deg, #dc3545, #c82333);
       color: white;
-      
+
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #c82333, #a71e2a);
         transform: translateY(-2px);
@@ -685,7 +766,7 @@
 @media (max-width: 768px) {
   .botones-container {
     flex-direction: column;
-    
+
     button {
       width: 100%;
       justify-content: center;
@@ -717,7 +798,7 @@
 .btn-marcajes-anteriores {
   background: linear-gradient(135deg, #e67e22, #d35400) !important;
   color: white !important;
-  
+
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, #d35400, #a84300) !important;
     transform: translateY(-2px);

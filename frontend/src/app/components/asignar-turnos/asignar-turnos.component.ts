@@ -689,22 +689,19 @@ export class AsignarTurnosComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Bloquear si tiene permiso autorizado en el rango
-    if (this.tienePermisoAutorizado(empleado.id!)) {
-      const detalle = this.getPermisoEmpleado(empleado.id!)?.detalle || '';
-      this.error = `${empleado.nombre_completo} tiene permiso autorizado en este período: ${detalle}`;
-      return;
-    }
-
     const index = this.equipoCompleto.findIndex(e => e.id === empleado.id);
 
     if (index === -1) {
-      // Advertir si tiene permiso pendiente
-      if (this.tienePermisoPendiente(empleado.id!)) {
-        const detalle = this.getPermisoEmpleado(empleado.id!)?.detalle || '';
+      const permiso = this.getPermisoEmpleado(empleado.id!);
+
+      if (permiso?.autorizado) {
+        if (!confirm(`⚠️ ${empleado.nombre_completo} tiene permiso AUTORIZADO en este período:\n${permiso.detalle}\n\n¿Desea agregarlo de todas formas?`)) return;
+      } else if (permiso?.pendiente) {
+        const detalle = permiso.detalle || '';
         this.info = `⚠️ ${empleado.nombre_completo} tiene una solicitud de permiso pendiente: ${detalle}`;
         setTimeout(() => this.info = null, 5000);
       }
+
       this.equipoCompleto.push({ ...empleado });
     } else {
       this.equipoCompleto.splice(index, 1);

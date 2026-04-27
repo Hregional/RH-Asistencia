@@ -1,5 +1,4 @@
 <div class="wrapper">
-  <h1>Crear y asignar turno</h1>
 
   <div class="alerts">
     <div class="alert error" *ngIf="error">
@@ -33,16 +32,13 @@
     </div>
   </section>
 
-  <!-- Vista LISTA (rotativos/fijos) - Donde se muestran las configuraciones guardadas -->
-  <section *ngIf="vista==='LISTA_ROTATIVOS' || vista==='LISTA_FIJOS'" class="card">
-    <h2 *ngIf="vista==='LISTA_ROTATIVOS'">Turnos Rotativos ({{ configuracionesRotativas.length }})</h2>
-    <h2 *ngIf="vista==='LISTA_FIJOS'">Turnos Fijos</h2>
+  <!-- Vista LISTA (rotativos/fijos) -->
+  <section *ngIf="vista==='LISTA_ROTATIVOS' || vista==='LISTA_FIJOS'" class="card" style="padding-top: 0;">
 
     <!-- VISTA TABLA PARA FIJOS -->
     <div *ngIf="vista==='LISTA_FIJOS'">
-      <!-- Filtros de búsqueda para tabla -->
       <div class="search-filters"
-        style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        style="padding: 1rem; background: #f8f9fa; border-radius: 8px 8px 0 0; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
         <div class="filter-group">
           <label style="display:block; font-weight: 600; margin-bottom: 0.25rem;">Mes:</label>
           <select [(ngModel)]="searchMonth" style="padding: 0.5rem; border-radius: 6px; border: 1px solid #ccc;">
@@ -60,13 +56,11 @@
             <option [ngValue]="12">Diciembre</option>
           </select>
         </div>
-
         <div class="filter-group">
           <label style="display:block; font-weight: 600; margin-bottom: 0.25rem;">Año:</label>
           <input type="number" [(ngModel)]="searchYear" min="2020" max="2030"
             style="padding: 0.5rem; border-radius: 6px; border: 1px solid #ccc;">
         </div>
-
         <div class="filter-group">
           <label style="display:block; font-weight: 600; margin-bottom: 0.25rem;">Departamento:</label>
           <select [(ngModel)]="searchAreaId" style="padding: 0.5rem; border-radius: 6px; border: 1px solid #ccc;">
@@ -74,15 +68,13 @@
             <option *ngFor="let area of areas" [ngValue]="area.id">{{ area.nombre }}</option>
           </select>
         </div>
-
         <button class="btn primary" (click)="onSearchFilter()">Buscar</button>
-
         <button class="btn primary" (click)="abrirFormulario('NUEVO')" style="margin-left: auto;">
           + Nuevo Turno Fijo
         </button>
+        <button class="btn outline" (click)="vista='HOME'">← Volver</button>
       </div>
 
-      <!-- Tabla de resultados -->
       <div class="table-container" style="overflow-x: auto;">
         <table class="table" style="width: 100%; border-collapse: collapse;">
           <thead>
@@ -99,9 +91,7 @@
             <tr *ngFor="let config of filteredFijos" style="border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 1rem;">{{ config.areaNombre }}</td>
               <td style="padding: 1rem;">{{ config.jefeNombre }}</td>
-              <td style="padding: 1rem;">
-                <strong>{{ config.nombreTurno }}</strong>
-              </td>
+              <td style="padding: 1rem;"><strong>{{ config.nombreTurno }}</strong></td>
               <td style="padding: 1rem;">{{ config.empleadosCount }} empleados</td>
               <td style="padding: 1rem;">{{ config.diasDescansoLabel }}</td>
               <td style="padding: 1rem;">
@@ -120,42 +110,55 @@
       </div>
     </div>
 
-    <div class="selection-options" *ngIf="vista==='LISTA_ROTATIVOS'">
-      <!-- Boton de crear -->
-      <div class="option-card" (click)="abrirFormulario('NUEVO')">
-        <div class="option-icon"></div>
-        <h3>Crear nuevo Rotativo</h3>
-        <p>Configurar un nuevo grupo de turnos desde cero</p>
+    <div *ngIf="vista==='LISTA_ROTATIVOS'">
+      <div class="search-filters"
+        style="padding: 1rem; background: #f8f9fa; border-radius: 8px 8px 0 0; display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+        <button class="btn primary" (click)="abrirFormulario('NUEVO')" style="margin-left: auto;">
+          + Nuevo Turno Rotativo
+        </button>
+        <button class="btn outline" (click)="vista='HOME'">← Volver</button>
       </div>
 
-      <!-- Configuraciones guardadas - AQUÍ SÍ aplicas el cambio -->
-      <!-- Configuraciones guardadas ROTATIVAS -->
-      <div class="option-card" *ngFor="let conf of configuracionesRotativas; trackBy: trackByConfigId"
-        (click)="abrirFormulario(conf.id)">
-        <button class="delete-conf-btn"
-          (click)="eliminarConfiguracion(conf, vista); $event.stopPropagation()">×</button>
-        <div class="option-icon"></div>
-        <h3>{{ conf.areaNombre }}</h3>
-        <p>{{ conf.jefeNombre }} | {{ conf.empleadosCount }} empleados</p>
-
-        <small>Creado: {{ conf.fechaCreacion | date:'medium' }}</small>
-        <app-renovacion [loteId]="conf.id" [fechaFin]="conf.fecha_fin" [areaNombre]="conf.areaNombre"
-          [jefeNombre]="conf.jefeNombre" [empleadosCount]="conf.empleadosCount" [areaId]="conf.areaId">
-        </app-renovacion>
-
+      <div class="table-container" style="overflow-x: auto;">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #f1f5f9; text-align: left;">
+              <th style="padding: 1rem;">Área</th>
+              <th style="padding: 1rem;">Jefe</th>
+              <th style="padding: 1rem;">Empleados</th>
+              <th style="padding: 1rem;">Período</th>
+              <th style="padding: 1rem;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let conf of configuracionesRotativas; trackBy: trackByConfigId"
+              style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 1rem;">{{ conf.areaNombre }}</td>
+              <td style="padding: 1rem;">{{ conf.jefeNombre }}</td>
+              <td style="padding: 1rem;">{{ conf.empleadosCount }} empleados</td>
+              <td style="padding: 1rem;">
+                {{ conf.fecha_inicio | date:'dd/MM/yyyy':'UTC' }} —
+                {{ conf.fecha_fin | date:'dd/MM/yyyy':'UTC' }}
+              </td>
+              <td style="padding: 1rem;">
+                <button class="btn small outline" (click)="abrirFormulario(conf.id)"
+                  style="margin-right: 0.5rem;">Editar</button>
+                <button class="btn small danger" (click)="eliminarConfiguracion(conf, vista)">Eliminar</button>
+              </td>
+            </tr>
+            <tr *ngIf="configuracionesRotativas.length === 0">
+              <td colspan="5" style="padding: 2rem; text-align: center; color: #64748b;">
+                No hay turnos rotativos registrados.
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
-
-
-    <div class="actions">
-      <button class="btn outline" (click)="vista='HOME'"> Volver al inicio</button>
     </div>
   </section>
 
   <!-- Vista FORMULARIO -->
   <section *ngIf="vista==='FORMULARIO'" class="card">
-    <h2>{{ editandoId ? 'Editar turno ' + (modo === 'ROTATIVO' ? 'Rotativo' : 'Fijo') : 'Crear nuevo turno ' + (modo ===
-      'ROTATIVO' ? 'Rotativo' : 'Fijo') }}</h2>
 
     <!-- Stepper (solo rotativos) -->
     <div class="stepper" *ngIf="modo==='ROTATIVO'">
@@ -244,11 +247,11 @@
         <div class="empleados-grid">
           <label *ngFor="let e of empleadosFiltrados; trackBy: trackByEmpleadoId" class="empleado-card"
             [class.selected]="isEmpleadoSeleccionado(e.id)"
-            [class.not-selectable]="!isEmpleadoSeleccionable(e) || tienePermisoAutorizado(e.id)"
+            [class.not-selectable]="!isEmpleadoSeleccionable(e)"
             [class.permiso-autorizado]="tienePermisoAutorizado(e.id)"
             [class.permiso-pendiente]="!tienePermisoAutorizado(e.id) && tienePermisoPendiente(e.id)">
             <input type="checkbox" [checked]="isEmpleadoSeleccionado(e.id)"
-              [disabled]="!isEmpleadoSeleccionable(e) || tienePermisoAutorizado(e.id)"
+              [disabled]="!isEmpleadoSeleccionable(e)"
               (change)="toggleEmpleadoEquipo(e)" />
             <div class="info">
               <span class="name">{{ e.nombre_completo }}</span>
@@ -260,8 +263,7 @@
                 🔒 Permiso autorizado
               </span>
               <span *ngIf="!tienePermisoAutorizado(e.id) && tienePermisoPendiente(e.id)"
-                class="badge-permiso badge-permiso-pendiente"
-                [title]="getPermisoEmpleado(e.id)?.detalle">
+                class="badge-permiso badge-permiso-pendiente" [title]="getPermisoEmpleado(e.id)?.detalle">
                 ⚠️ Permiso pendiente
               </span>
 

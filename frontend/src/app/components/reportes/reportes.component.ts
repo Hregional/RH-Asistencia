@@ -512,7 +512,8 @@ export class ReportesComponent implements OnInit {
   getCumplimientoClass(valor: string): string {
     if (!valor) return '';
     const v = valor.toLowerCase();
-
+    if (v.includes('con permiso')) return 'cumplimiento-permiso';
+    if (v.includes('feriado')) return 'cumplimiento-feriado';
     if (v.includes('cumple')) return 'cumplimiento-exito';
     if (v.includes('retraso')) return 'cumplimiento-advertencia';
     if (v.includes('ausente')) return 'cumplimiento-error';
@@ -524,10 +525,11 @@ export class ReportesComponent implements OnInit {
   getEstadoClass(estado: string): string {
     if (!estado) return '';
     if (estado.includes('No obligatorio')) return 'estado-exento';
+    if (estado.includes('Con Permiso')) return 'estado-permiso';
+    if (estado.includes('Feriado')) return 'estado-feriado';
     if (estado.includes('Presente')) return 'estado-presente';
     if (estado.includes('Ausente')) return 'estado-ausente';
     if (estado.includes('Retraso') || estado.includes('Tarde')) return 'estado-retraso';
-
     return '';
   }
 
