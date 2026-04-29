@@ -60,6 +60,9 @@ export class PermisosComponent implements OnInit {
   // Permiso en edición
   editingPermiso: Permiso | null = null;
 
+  // Flag para impresión directa desde tabla
+  imprimiendoDesdeTabla = false;
+
   // Advertencia de días excedidos
   diasExcedidos = false;
 
@@ -221,14 +224,18 @@ export class PermisosComponent implements OnInit {
   irAEditarPermiso(permiso: Permiso) {
     this.editingPermiso = permiso;
     this.vistaActual = 'editarPermiso';
+
+    // Si tipo_permiso_id es null, es personalizado → mapear a -1
+    const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
+
     this.solicitudForm = {
       ...permiso,
+      tipo_permiso_id: tipoId,
       fecha_inicio: this.toDateInput(permiso.fecha_inicio),
       fecha_fin: this.toDateInput(permiso.fecha_fin),
     };
     this.empleadoSeleccionado = this.empleados.find(e => e.id === permiso.empleado_id) || null;
     this.empleadoBusqueda = permiso.nombre_completo || '';
-    // Recalcular días con las fechas normalizadas y validar límite
     this.diasExcedidos = false;
     if (this.solicitudForm.fecha_inicio && this.solicitudForm.fecha_fin) {
       this.solicitudForm.dias_solicitados = calcularDiasHabilesGT(
@@ -257,12 +264,11 @@ export class PermisosComponent implements OnInit {
 
   // ─── TIPO PERMISO CHANGE ──────────────────────────────────────────
   onTipoPermisoChange() {
-    const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
-    if (tipo) {
-      this.solicitudForm.tipo_permiso_otro = '';
-    }
+    // Solo limpiar campos específicos del tipo anterior, no todo
+    this.solicitudForm.tipo_permiso_otro = '';
+    this.solicitudForm.mensaje_otro = '';
 
-    // Limpiar fechas y días al cambiar tipo
+    // Solo resetear fechas para recalcular días hábiles según el nuevo tipo
     this.solicitudForm.fecha_inicio = '';
     this.solicitudForm.fecha_fin = '';
     this.solicitudForm.dias_solicitados = 0;
@@ -642,6 +648,50 @@ export class PermisosComponent implements OnInit {
     win.document.close();
     win.focus();
     setTimeout(() => { win.print(); win.close(); }, 500);
+  }
+
+  // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
+  imprimirPermisoDirecto(permiso: Permiso) {
+    const emp = this.empleados.find(e => e.id === permiso.empleado_id);
+    const rolNombre = emp ? (this.roles.find(r => r.id === emp.rol_id)?.nombre || '') : '';
+    const areaNombre = emp ? (this.areas.find(a => a.id === emp.area_id)?.nombre || '') : '';
+    const tipo = this.tiposPermiso.find(t => t.id === permiso.tipo_permiso_id);
+    const hoy = new Date();
+    const meses = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
+    const fmtFecha = (iso: string) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+    const inicio = permiso.fecha_inicio ? parseFechaLocal(permiso.fecha_inicio.substring(0, 10)) : null;
+    const fin = permiso.fecha_fin ? parseFechaLocal(permiso.fecha_fin.substring(0, 10)) : null;
+    const feriados = inicio && fin ? feriadosEnRango(inicio, fin) : [];
+    const finesSemana = inicio && fin ? finesDeSemanaEnRango(inicio, fin) : 0;
+    const dias = permiso.dias_solicitados || 0;
+
+    this.cartaData = {
+      nombreEmpleado: permiso.nombre_completo || '',
+      renglon: emp?.renglon || '',
+      area: areaNombre,
+      rol: rolNombre,
+      dia: String(hoy.getDate()).padStart(2, '0'),
+      mes: meses[hoy.getMonth()],
+      anio: String(hoy.getFullYear()),
+      tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
+      mensaje: permiso.tipo_permiso_id ? (tipo?.mensaje_carta || '') : (permiso.mensaje_otro || ''),
+      fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
+      fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
+      diasSolicitados: dias,
+      diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
+      feriadosIncluidos: feriados,
+      finesDeSemanaCont: finesSemana
+    };
+
+    this.imprimiendoDesdeTabla = true;
+
+    // Esperar a que Angular renderice la carta en el DOM oculto
+    setTimeout(() => {
+      this.imprimirCarta();
+      setTimeout(() => {
+        this.imprimiendoDesdeTabla = false;
+      }, 1000);
+    }, 150);
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────

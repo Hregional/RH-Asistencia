@@ -1139,7 +1139,10 @@ export class ReportesComponent implements OnInit {
       this.fechaHasta = '';
     } else if (this.tipoReporte === 'permisos') {
       this.inicializarFechasPorDefecto();
-      this.estadoPermisoFiltro = 'todos';
+      this.estadoPermisoFiltro = 'AUTORIZADO';
+      this.tipoFiltroPermisos = 'mes';
+      this.mesPermisos = new Date().toISOString().substring(0, 7);
+      this.onMesPermisosChange();
       this.reportePermisos = [];
     } else {
       this.diaEspecifico = '';
@@ -1151,12 +1154,29 @@ export class ReportesComponent implements OnInit {
   }
 
   // ─── REPORTE DE PERMISOS ──────────────────────────────────────────
-  estadoPermisoFiltro: string = 'todos';
+  estadoPermisoFiltro: string = 'AUTORIZADO';
   reportePermisos: any[] = [];
+  tipoFiltroPermisos: string = 'mes';
+  mesPermisos: string = '';
+
+  onTipoFiltroPermisosChange() {
+    this.fechaDesde = '';
+    this.fechaHasta = '';
+    this.mesPermisos = '';
+    this.reportePermisos = [];
+  }
+
+  onMesPermisosChange() {
+    if (!this.mesPermisos) return;
+    const [year, month] = this.mesPermisos.split('-').map(Number);
+    const diasMes = new Date(year, month, 0).getDate();
+    this.fechaDesde = `${year}-${String(month).padStart(2, '0')}-01`;
+    this.fechaHasta = `${year}-${String(month).padStart(2, '0')}-${String(diasMes).padStart(2, '0')}`;
+  }
 
   generarReportePermisos() {
     if (!this.fechaDesde || !this.fechaHasta) {
-      alert('Seleccione el rango de fechas.');
+      alert('Seleccione el período.');
       return;
     }
     this.cargando = true;
@@ -1165,7 +1185,7 @@ export class ReportesComponent implements OnInit {
       hasta: this.fechaHasta,
       area_id: this.areaSeleccionada,
       empleado_id: this.empleadoSeleccionado?.id,
-      estado: this.estadoPermisoFiltro
+      estado: 'AUTORIZADO'  // siempre solo autorizados
     }).subscribe({
       next: (res: any) => {
         this.reportePermisos = res.data || [];
@@ -1195,7 +1215,7 @@ export class ReportesComponent implements OnInit {
     }));
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(datos);
-    ws['!cols'] = [5,25,20,20,20,12,12,8,12,30].map(w => ({ wch: w }));
+    ws['!cols'] = [5, 25, 20, 20, 20, 12, 12, 8, 12, 30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, 'Permisos');
     XLSX.writeFile(wb, `Reporte_Permisos_${this.fechaDesde}_${this.fechaHasta}.xlsx`);
   }
@@ -1208,7 +1228,7 @@ export class ReportesComponent implements OnInit {
     const fechaGen = new Date().toLocaleDateString('es-GT');
 
     const generarPDF = () => {
-      try { doc.addImage(logo, 'PNG', 14, 8, 25, 25); } catch (e) {}
+      try { doc.addImage(logo, 'PNG', 14, 8, 25, 25); } catch (e) { }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.text('Hospital Regional de Occidente', 45, 15);

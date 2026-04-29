@@ -58,6 +58,8 @@
             <button class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')"
               [disabled]="permiso.estado === 'AUTORIZADO'">Autorizar</button>
             <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
+            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
+              (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
@@ -97,7 +99,7 @@
       <div class="form-group">
         <label>Tipo de Permiso</label>
         <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="onTipoPermisoChange()">
-          <option [ngValue]="undefined">Seleccionar tipo...</option>
+          <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
           <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">
             {{ tipo.nombre }} ({{ tipo.dias_permitidos }} días)
           </option>
@@ -178,8 +180,10 @@
     <div class="form-group">
       <label>Tipo de Permiso</label>
       <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="onTipoPermisoChange()">
-        <option [ngValue]="undefined">Seleccionar tipo...</option>
-        <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">{{ tipo.nombre }}</option>
+        <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
+        <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">
+          {{ tipo.nombre }} ({{ tipo.dias_permitidos }} días)
+        </option>
         <option [ngValue]="-1">Personalizado</option>
       </select>
     </div>
@@ -315,6 +319,11 @@
 </div>
 
 <!-- ═══ CARTA HRO — una hoja, dos copias ═══ -->
+<!-- Contenedor oculto para impresión directa desde tabla -->
+<div style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;" *ngIf="imprimiendoDesdeTabla">
+  <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+</div>
+
 <ng-template #cartaTemplate>
   <div class="carta-hoja">
 

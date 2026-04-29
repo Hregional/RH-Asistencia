@@ -60,62 +60,82 @@
       </div>
 
       <!-- Filtros para reporte de permisos -->
-      <div class="filtro-group" *ngIf="tipoReporte === 'permisos'">
-        <label>Desde:</label>
-        <div class="input-icon">
-          <input type="date" [(ngModel)]="fechaDesde" />
-          <i class="fa fa-calendar"></i>
+      <ng-container *ngIf="tipoReporte === 'permisos'">
+
+        <!-- Fila 1: Tipo de filtro de fecha -->
+        <div class="filtro-group">
+          <label>Período:</label>
+          <select [(ngModel)]="tipoFiltroPermisos" (change)="onTipoFiltroPermisosChange()">
+            <option value="mes">Mes</option>
+            <option value="dia">Día específico</option>
+            <option value="rango">Rango de fechas</option>
+          </select>
         </div>
-      </div>
 
-      <div class="filtro-group" *ngIf="tipoReporte === 'permisos'">
-        <label>Hasta:</label>
-        <div class="input-icon">
-          <input type="date" [(ngModel)]="fechaHasta" />
-          <i class="fa fa-calendar"></i>
-        </div>
-      </div>
-
-      <div class="filtro-group" *ngIf="tipoReporte === 'permisos'">
-        <label>Área:</label>
-        <select [(ngModel)]="areaSeleccionada">
-          <option value="">-- Todas las áreas --</option>
-          <option value="sin_area">Sin área asignada</option>
-          <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre_area }}</option>
-        </select>
-      </div>
-
-      <div class="filtro-group" *ngIf="tipoReporte === 'permisos'">
-        <label>Estado:</label>
-        <select [(ngModel)]="estadoPermisoFiltro">
-          <option value="todos">Todos</option>
-          <option value="AUTORIZADO">Autorizado</option>
-          <option value="PENDIENTE">Pendiente</option>
-          <option value="RECHAZADO">Rechazado</option>
-        </select>
-      </div>
-
-      <div class="filtro-group" *ngIf="tipoReporte === 'permisos'">
-        <label>Empleado:</label>
-        <div class="busqueda-empleado-container">
-          <input type="text" [(ngModel)]="empleadoBusqueda" (input)="buscarEmpleados()"
-            placeholder="Buscar por nombre..." class="busqueda-input" autocomplete="off">
-          <div *ngIf="mostrandoResultados && empleadosEncontrados.length > 0" class="resultados-busqueda">
-            <div *ngFor="let emp of empleadosEncontrados" (click)="seleccionarEmpleado(emp)" class="resultado-item">
-              {{ emp.nombre_completo }}
-              <small *ngIf="emp.area_nombre" style="color:#888"> — {{ emp.area_nombre }}</small>
-              <small *ngIf="!emp.area_nombre" style="color:#aaa"> — Sin área</small>
-            </div>
+        <!-- Día específico -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'dia'">
+          <label>Día:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaDesde" (change)="fechaHasta = fechaDesde" />
+            <i class="fa fa-calendar"></i>
           </div>
-          <button *ngIf="empleadoSeleccionado" (click)="limpiarBusquedaEmpleado()" class="btn-limpiar"
-            title="Limpiar selección">
-            <i class="fa fa-times"></i>
-          </button>
         </div>
-        <small *ngIf="empleadoSeleccionado" style="color:#555; margin-top:3px; display:block;">
-          Seleccionado: <strong>{{ empleadoSeleccionado.nombre_completo }}</strong>
-        </small>
-      </div>
+
+        <!-- Mes -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'mes'">
+          <label>Mes:</label>
+          <input type="month" [(ngModel)]="mesPermisos" (change)="onMesPermisosChange()" />
+        </div>
+
+        <!-- Rango -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'rango'">
+          <label>Desde:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaDesde" />
+            <i class="fa fa-calendar"></i>
+          </div>
+        </div>
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'rango'">
+          <label>Hasta:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaHasta" />
+            <i class="fa fa-calendar"></i>
+          </div>
+        </div>
+
+        <!-- Fila 2: Área y Empleado -->
+        <div class="filtro-group">
+          <label>Área:</label>
+          <select [(ngModel)]="areaSeleccionada">
+            <option value="">-- Todas las áreas --</option>
+            <option value="sin_area">Sin área asignada</option>
+            <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre_area }}</option>
+          </select>
+        </div>
+
+        <div class="filtro-group">
+          <label>Empleado:</label>
+          <div class="busqueda-empleado-container">
+            <input type="text" [(ngModel)]="empleadoBusqueda" (input)="buscarEmpleados()"
+              placeholder="Buscar por nombre..." class="busqueda-input" autocomplete="off">
+            <div *ngIf="mostrandoResultados && empleadosEncontrados.length > 0" class="resultados-busqueda">
+              <div *ngFor="let emp of empleadosEncontrados" (click)="seleccionarEmpleado(emp)" class="resultado-item">
+                {{ emp.nombre_completo }}
+                <small *ngIf="emp.area_nombre" style="color:#888"> — {{ emp.area_nombre }}</small>
+                <small *ngIf="!emp.area_nombre" style="color:#aaa"> — Sin área</small>
+              </div>
+            </div>
+            <button *ngIf="empleadoSeleccionado" (click)="limpiarBusquedaEmpleado()" class="btn-limpiar"
+              title="Limpiar selección">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+          <small *ngIf="empleadoSeleccionado" style="color:#555; margin-top:3px; display:block;">
+            Seleccionado: <strong>{{ empleadoSeleccionado.nombre_completo }}</strong>
+          </small>
+        </div>
+
+      </ng-container>
 
       <div class="filtro-group" *ngIf="tipoReporte === 'biometricos' && tipoFiltroBiometricos === 'dia'">
         <label>Día Específico:</label>
