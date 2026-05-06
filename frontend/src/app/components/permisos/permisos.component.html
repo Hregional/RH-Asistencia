@@ -50,33 +50,29 @@
           <td>{{ permiso.fecha_fin | date:'dd/MM/yyyy' }}</td>
           <td>{{ permiso.dias_solicitados }}</td>
           <td>
-            <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado, permiso)">
+            <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado, permiso)"
+              [title]="permiso.observaciones || ''">
               {{ permiso.estado === 'AUTORIZADO' && yaFinalizo(permiso) ? 'Finalizado' : permiso.estado }}
             </span>
-            <span *ngIf="permiso.estado === 'AUTORIZADO' && esVigente(permiso)" class="badge-en-curso">
-              En curso
-            </span>
+            <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
           </td>
           <td class="action-buttons">
             <ng-container *ngIf="!yaFinalizo(permiso); else soloImprimir">
-              <button class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')"
-                [disabled]="permiso.estado === 'AUTORIZADO'">Autorizar</button>
-              <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
-              <button class="btn-obs-icon" (click)="mostrarObservaciones($event, permiso)"
-                *ngIf="permiso.estado !== 'AUTORIZADO'"
-                [title]="permiso.observaciones ? permiso.observaciones : 'Ver estado'">
-                💬
+              <button *ngIf="permiso.estado !== 'AUTORIZADO'"
+                class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')">
+                Autorizar
               </button>
+              <button *ngIf="permiso.estado === 'AUTORIZADO'"
+                class="btn btn-danger btn-small" (click)="cambiarEstado(permiso, 'RECHAZADO')">
+                Rechazar
+              </button>
+              <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
               <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
                 (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
             </ng-container>
             <ng-template #soloImprimir>
               <button class="btn btn-secondary btn-small"
                 (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
-              <button class="btn-obs-icon" (click)="mostrarObservaciones($event, permiso)"
-                [title]="permiso.observaciones ? permiso.observaciones : 'Ver estado'">
-                💬
-              </button>
             </ng-template>
           </td>
         </tr>

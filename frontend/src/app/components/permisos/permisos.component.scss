@@ -246,6 +246,14 @@
   border: 1px solid #90a4b7;
 }
 
+/* Icono de observación junto al estado */
+.obs-icon {
+  font-size: 13px;
+  margin-left: 4px;
+  cursor: default;
+  vertical-align: middle;
+}
+
 /* ─── ACCIONES ─── */
 .action-buttons {
   display: flex;

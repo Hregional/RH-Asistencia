@@ -497,11 +497,8 @@ export class PermisosComponent implements OnInit {
   }
 
   // ─── ESTADO ───────────────────────────────────────────────────────
-  cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO') {
-    if (!confirm(`¿Cambiar estado a ${estado}?`)) return;
-
+  cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     if (estado === 'AUTORIZADO') {
-      // Verificar si tiene turno asignado en ese rango antes de autorizar
       this.permisosSvc.getTurnosEnRango(permiso.empleado_id, permiso.fecha_inicio, permiso.fecha_fin).subscribe({
         next: (res) => {
           if (res.tieneTurnos) {
@@ -517,7 +514,7 @@ export class PermisosComponent implements OnInit {
     }
   }
 
-  private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO') {
+  private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     this.loading = true;
     this.permisosSvc.updateEstadoPermiso(permiso.id!, estado).subscribe({
       next: (res) => {
