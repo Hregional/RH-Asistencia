@@ -303,8 +303,8 @@ export class EmpleadosComponent implements OnInit {
   getEstadoEmpleado(emp: Empleado): string {
     if (!emp.activo) return 'Inactivo';
     const permiso = this.permisosVigentesObj[emp.id!];
+    // Solo muestra "Con Permiso" si el permiso está AUTORIZADO y en rango de fechas activo hoy
     if (permiso?.estado === 'AUTORIZADO') return 'Con Permiso';
-    if (permiso?.estado === 'PENDIENTE') return 'Permiso Pendiente';
     return 'Activo';
   }
 
@@ -312,7 +312,6 @@ export class EmpleadosComponent implements OnInit {
     if (!emp.activo) return 'status-inactive';
     const permiso = this.permisosVigentesObj[emp.id!];
     if (permiso?.estado === 'AUTORIZADO') return 'status-permiso';
-    if (permiso?.estado === 'PENDIENTE') return 'status-permiso-pendiente';
     return 'status-active';
   }
 

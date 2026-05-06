@@ -209,6 +209,19 @@
   white-space: nowrap;
 }
 
+.badge-en-curso {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #d1f5d3;
+  color: #1a7a2e;
+  border: 1px solid #28a745;
+  vertical-align: middle;
+}
+
 .estado-pendiente {
   background: #fff3cd;
   color: #856404;

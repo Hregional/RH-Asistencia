@@ -53,6 +53,9 @@
             <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado)">
               {{ permiso.estado }}
             </span>
+            <span *ngIf="permiso.estado === 'AUTORIZADO' && esVigente(permiso)" class="badge-en-curso">
+              En curso
+            </span>
           </td>
           <td class="action-buttons">
             <button class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')"

@@ -77,8 +77,8 @@ class PermisosModel {
         tp.nombre AS tipo_permiso_nombre,
         p.tipo_permiso_otro,
         p.mensaje_otro,
-        p.fecha_inicio,
-        p.fecha_fin,
+        DATE_FORMAT(p.fecha_inicio, '%Y-%m-%d') AS fecha_inicio,
+        DATE_FORMAT(p.fecha_fin,    '%Y-%m-%d') AS fecha_fin,
         p.dias_solicitados,
         p.estado,
         p.observaciones,
@@ -378,9 +378,8 @@ router.get('/vigentes-hoy', requireAuth, async (req, res) => {
     const [rows] = await db.query(`
       SELECT p.empleado_id, p.estado, p.fecha_inicio, p.fecha_fin
       FROM permisos p
-      WHERE p.estado IN ('AUTORIZADO', 'PENDIENTE')
+      WHERE p.estado = 'AUTORIZADO'
         AND p.fecha_inicio <= ? AND p.fecha_fin >= ?
-      ORDER BY p.estado ASC
     `, [hoy, hoy]);
     res.json({ success: true, data: rows });
   } catch (error) {
