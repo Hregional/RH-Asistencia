@@ -141,7 +141,7 @@
     <!-- Fechas con calendarios -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined">
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
           <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
           <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
             [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
@@ -171,9 +171,6 @@
 
     <div class="form-actions">
       <button class="btn btn-primary" (click)="guardarSolicitud()" [disabled]="loading">Guardar Solicitud</button>
-      <button class="btn btn-success" (click)="imprimirCarta()"
-        [disabled]="!empleadoSeleccionado || !solicitudForm.fecha_inicio || !solicitudForm.dias_solicitados">Imprimir
-        Carta</button>
       <button class="btn btn-secondary" (click)="volverATabla()">Cancelar</button>
     </div>
   </div>
@@ -220,7 +217,7 @@
 
     <!-- Calendarios para controlar días hábiles -->
     <div class="form-row">
-      <div class="form-group">
+      <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
         <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
         <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
           [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
@@ -262,8 +259,6 @@
 
     <div class="form-actions">
       <button class="btn btn-primary" (click)="actualizarPermiso()" [disabled]="loading">Actualizar</button>
-      <button class="btn btn-success" (click)="imprimirCarta()" [disabled]="!solicitudForm.fecha_inicio">Imprimir
-        Carta</button>
       <button class="btn btn-secondary" (click)="volverATabla()">Cancelar</button>
     </div>
   </div>
@@ -373,7 +368,7 @@
       <div class="logo-escudo">⚕</div>
       <div class="carta-hro-inst">
         <strong>Ministerio de Salud Pública y Asistencia Social</strong><br>
-        <strong> Hospital Regional de Occidente,Quetzaltenango</strong>
+        <strong> Hospital Regional de Occidente, Quetzaltenango</strong>
       </div>
     </div>
     <div class="carta-hro-logo-right">

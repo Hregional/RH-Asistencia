@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db.js');
 const { audit } = require('../utils/audit.js');
 const { requireAuth } = require('../middlewares/auth.js');
+const { ensureActor } = require('../middlewares/actor.js');
 const router = express.Router();
 
 // MODELO - Tipos de Permiso
@@ -85,20 +86,15 @@ class PermisosModel {
         p.creado_en,
         p.actualizado_en,
         p.autorizado_en,
-        (SELECT al.actor_username FROM audit_log al
-         WHERE al.entidad = 'permisos' AND al.entidad_id = p.id
-         AND al.evento = 'CREATE'
-         ORDER BY al.creado_en ASC LIMIT 1) AS creado_por_usuario,
-        (SELECT al.actor_username FROM audit_log al
-         WHERE al.entidad = 'permisos' AND al.entidad_id = p.id
-         AND al.evento IN ('UPDATE','DELETE')
-         ORDER BY al.creado_en DESC LIMIT 1) AS autorizado_por_usuario
+        uc.username AS creado_por_usuario,
+        ua.username AS autorizado_por_usuario
       FROM permisos p
       INNER JOIN empleados e ON p.empleado_id = e.id
       LEFT JOIN roles_empleado r ON e.rol_id = r.id
       LEFT JOIN areas a ON e.area_id = a.id
       LEFT JOIN tipos_permiso tp ON p.tipo_permiso_id = tp.id
-      LEFT JOIN usuarios_sistema u ON p.creado_por = u.id
+      LEFT JOIN usuarios_sistema uc ON p.creado_por = uc.id
+      LEFT JOIN usuarios_sistema ua ON p.autorizado_por = ua.id
     `;
 
     if (filtro === 'permiso') {
@@ -312,6 +308,9 @@ class PermisosController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      // Pasar el ID del usuario logueado como creado_por
+      data.creado_por = req.actorId ?? null;
+
       const nuevo = await PermisosModel.create(data);
       await audit({ evento: 'CREATE', entidad: 'permisos', entidad_id: nuevo.id, antes: null, despues: nuevo, req });
 
@@ -350,7 +349,7 @@ class PermisosController {
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });
 
-      const actualizado = await PermisosModel.updateEstado(id, estado, req.user?.id);
+      const actualizado = await PermisosModel.updateEstado(id, estado, req.actorId ?? null);
       await audit({ evento: 'UPDATE', entidad: 'permisos', entidad_id: id, antes, despues: actualizado, req });
 
       return res.json({ success: true, data: actualizado });
@@ -510,11 +509,11 @@ router.put('/tipos/:id', TiposPermisoController.update);
 router.delete('/tipos/:id', TiposPermisoController.delete);
 
 // Permisos
-router.get('/', PermisosController.getAll);
-router.get('/:id', PermisosController.getById);
-router.post('/', PermisosController.create);
-router.put('/:id', PermisosController.update);
-router.patch('/:id/estado', PermisosController.updateEstado);
-router.delete('/:id', PermisosController.delete);
+router.get('/', requireAuth, PermisosController.getAll);
+router.get('/:id', requireAuth, PermisosController.getById);
+router.post('/', requireAuth, ensureActor, PermisosController.create);
+router.put('/:id', requireAuth, ensureActor, PermisosController.update);
+router.patch('/:id/estado', requireAuth, ensureActor, PermisosController.updateEstado);
+router.delete('/:id', requireAuth, ensureActor, PermisosController.delete);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { KeycloakService } from 'keycloak-angular';
 import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.service';
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
 import {
@@ -99,9 +100,13 @@ export class PermisosComponent implements OnInit {
   // Carta preview
   cartaData = this.initCartaData();
 
+  // Usuario logueado actual
+  usuarioActual = '';
+
   constructor(
     private permisosSvc: PermisosService,
-    private empleadosSvc: EmpleadosService
+    private empleadosSvc: EmpleadosService,
+    private kc: KeycloakService
   ) { }
 
   ngOnInit() {
@@ -110,6 +115,11 @@ export class PermisosComponent implements OnInit {
     this.loadTiposPermiso();
     this.empleadosSvc.getRoles().subscribe(r => { if (r.success && r.data) this.roles = r.data; });
     this.empleadosSvc.getAreas().subscribe(a => { if (a.success && a.data) this.areas = a.data; });
+    // Obtener username del usuario logueado
+    try {
+      const token = this.kc.getKeycloakInstance()?.tokenParsed as any;
+      this.usuarioActual = token?.preferred_username || token?.name || '';
+    } catch { this.usuarioActual = ''; }
   }
 
   private initSolicitudForm(): Partial<Permiso> {
@@ -367,7 +377,7 @@ export class PermisosComponent implements OnInit {
       diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
       feriadosIncluidos: feriados,
       finesDeSemanaCont: finesSemana,
-      creadoPor: '',
+      creadoPor: this.usuarioActual,
       autorizadoPor: '',
       fechaHoraImpresion: ''
     };
