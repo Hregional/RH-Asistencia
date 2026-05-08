@@ -332,6 +332,14 @@
 <!-- Overlay para cerrar popup -->
 <div *ngIf="popupObservaciones" class="obs-overlay" (click)="cerrarPopup()"></div>
 
+<!-- Modal de aviso -->
+<div *ngIf="avisoModal" class="aviso-modal-overlay" (click)="avisoModal = null">
+  <div class="aviso-modal" (click)="$event.stopPropagation()">
+    <p>{{ avisoModal }}</p>
+    <button class="btn btn-primary" (click)="avisoModal = null">Aceptar</button>
+  </div>
+</div>
+
 <!-- Popup de observaciones -->
 <div *ngIf="popupObservaciones" class="obs-popup" [style.top.px]="popupObservaciones.y + 10"
   [style.left.px]="popupObservaciones.x - 160">

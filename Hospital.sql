@@ -571,10 +571,8 @@ CREATE TABLE `permisos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insertar algunos tipos de permiso por defecto
-LOCK TABLES `tipos_permiso` WRITE;
-INSERT INTO `tipos_permiso` (`nombre`, `dias_permitidos`, `mensaje_carta`) VALUES
+INSERT IGNORE INTO `tipos_permiso` (`nombre`, `dias_permitidos`, `mensaje_carta`) VALUES
 ('Vacaciones', 30, 'A cuenta de vacaciones del presente período'),
 ('Cumpleaños', 1, 'A razon de celebración de cumpleaños'),
-('Cita al IGGS', 3, 'Por motivo de cita al Instituno Nacional de Seguridad Social'),
+('Cita al IGGS', 3, 'Por motivo de cita al Instituto Nacional de Seguridad Social'),
 ('Suspensión médica', 5, 'Por motivo de problema de salud que requiere reposo/tratamiento');
-UNLOCK TABLES;

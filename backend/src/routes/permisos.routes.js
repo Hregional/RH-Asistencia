@@ -53,6 +53,12 @@ class TiposPermisoModel {
   }
 
   static async delete(id) {
+    // Verificar si está siendo usado en algún permiso
+    const [[{ total }]] = await db.query(
+      `SELECT COUNT(*) AS total FROM permisos WHERE tipo_permiso_id = ?`, [id]
+    );
+    if (total > 0) throw new Error(`No se puede eliminar: está siendo usado en ${total} permiso(s)`);
+
     const [result] = await db.query(`UPDATE tipos_permiso SET activo = 0 WHERE id = ?`, [id]);
     if (result.affectedRows === 0) throw new Error('Tipo de permiso no encontrado');
     return true;
@@ -268,6 +274,10 @@ class TiposPermisoController {
 
       return res.json({ success: true, message: 'Tipo de permiso eliminado' });
     } catch (error) {
+      // Si está en uso, devolver 409 para que el frontend lo maneje como aviso
+      if (error.message.includes('está siendo usado')) {
+        return res.status(409).json({ success: false, error: error.message });
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
   }

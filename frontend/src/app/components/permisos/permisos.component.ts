@@ -67,6 +67,9 @@ export class PermisosComponent implements OnInit {
   // Popup de observaciones
   popupObservaciones: { permiso: Permiso; x: number; y: number } | null = null;
 
+  // Modal de aviso simple
+  avisoModal: string | null = null;
+
   mostrarObservaciones(event: MouseEvent, permiso: Permiso) {
     event.stopPropagation();
     this.popupObservaciones = { permiso, x: event.clientX, y: event.clientY };
@@ -602,7 +605,15 @@ export class PermisosComponent implements OnInit {
         if (res.success) this.loadTiposPermiso();
         else this.error = res.error || 'Error';
       },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
+      error: (err) => {
+        this.loading = false;
+        const msg = err?.error?.error || '';
+        if (err.status === 409 || msg.includes('está siendo usado')) {
+          this.avisoModal = msg || `El tipo "${tipo.nombre}" está siendo usado en permisos existentes y no puede eliminarse.`;
+        } else {
+          this.error = 'Error de conexión';
+        }
+      }
     });
   }
 
