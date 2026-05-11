@@ -381,7 +381,6 @@
     </div>
     <div class="carta-hro-logo-right">
       <span class="hro-text">HRO</span>
-      <div class="hro-sub">HOSPITAL REGIONAL DE OCCIDENTE</div>
     </div>
   </div>
 
@@ -394,7 +393,7 @@
   </div>
 
   <div class="carta-meta-impresion">
-    <span>Creado por: <strong>{{ cartaData.creadoPor || '—' }}</strong></span>
+    <span *ngIf="cartaData.autorizadoEn">Autorizado: <strong>{{ cartaData.autorizadoEn }}</strong></span>
     <span *ngIf="cartaData.autorizadoPor">Autorizado por: <strong>{{ cartaData.autorizadoPor }}</strong></span>
     <span>Impreso: {{ cartaData.fechaHoraImpresion }}</span>
   </div>

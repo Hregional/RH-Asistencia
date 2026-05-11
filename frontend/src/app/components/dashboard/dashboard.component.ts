@@ -19,6 +19,7 @@ export class DashboardComponent implements OnInit {
     turnosFijos: 0,
     turnosRotativos: 0,
     personalSinTurno: 0,
+    personalConPermiso: 0,
     // alertas: 0,
     proximosTurnos: {
       manana: { enfermeros: 0, medicos: 0 },

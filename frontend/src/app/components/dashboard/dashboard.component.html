@@ -43,6 +43,15 @@
           <small *ngIf="!hasData">Esperando datos...</small>
         </div>
       </div>
+
+      <!-- Tarjeta de Personal con Permiso -->
+      <div class="stat-card stat-card-permiso">
+        <div class="icon"><i class="fas fa-user-shield"></i></div>
+        <div class="info">
+          <p>Con Permiso Hoy</p>
+          <h2>{{ data.personalConPermiso }}</h2>
+        </div>
+      </div>
     </div>
   </div>
 

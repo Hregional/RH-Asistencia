@@ -161,7 +161,8 @@ export class PermisosComponent implements OnInit {
       finesDeSemanaCont: 0,
       creadoPor: '',
       autorizadoPor: '',
-      fechaHoraImpresion: ''
+      fechaHoraImpresion: '',
+      autorizadoEn: ''
     };
   }
 
@@ -382,7 +383,8 @@ export class PermisosComponent implements OnInit {
       finesDeSemanaCont: finesSemana,
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
-      fechaHoraImpresion: ''
+      fechaHoraImpresion: '',
+      autorizadoEn: ''
     };
   }
 
@@ -747,6 +749,14 @@ export class PermisosComponent implements OnInit {
       finesDeSemanaCont: finesSemana,
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
+      autorizadoEn: (() => {
+        const ae = permiso.autorizado_en;
+        if (!ae) return '';
+        const d = new Date(String(ae).replace('Z','').replace('T',' '));
+        const p2 = (n: number) => String(n).padStart(2,'0');
+        const h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+        return `${p2(d.getDate())}/${p2(d.getMonth()+1)}/${d.getFullYear()} ${p2(h%12||12)}:${p2(d.getMinutes())} ${ampm}`;
+      })(),
       fechaHoraImpresion
     };
 
