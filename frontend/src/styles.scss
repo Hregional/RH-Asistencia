@@ -38,3 +38,13 @@ body { margin: 0; }
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+/* Evita el overscroll bounce (espacios en blanco al llegar al tope del scroll) */
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
