@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import Chart from 'chart.js/auto';
 import { DashboardService, DashboardSummary } from '../../services/dashboard.service';
@@ -10,7 +10,10 @@ import { DashboardService, DashboardSummary } from '../../services/dashboard.ser
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
+
+  private refreshInterval: any;
+  private readonly REFRESH_MS = 5 * 60 * 1000; // 5 minutos
 
   areaColors = [
     '#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6',
@@ -43,6 +46,12 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDashboardData();
+    // Refresco automático cada 5 minutos
+    this.refreshInterval = setInterval(() => this.loadDashboardData(), this.REFRESH_MS);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshInterval) clearInterval(this.refreshInterval);
   }
 
   /** Carga los datos del dashboard */
