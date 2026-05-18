@@ -7,6 +7,7 @@ import { AsignarTurnosComponent } from './components/asignar-turnos/asignar-turn
 import { ReportesComponent } from './components/reportes/reportes.component';
 import { DepartamentosComponent } from './components/departamentos/departamentos/departamentos.component';
 import { PuestosComponent } from './components/puestos/puestos/puestos.component';
+import { PermisosComponent } from './components/permisos/permisos.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -29,6 +30,13 @@ export const routes: Routes = [
   {
     path: 'asignar-turnos',
     component: AsignarTurnosComponent,
+    canActivate: [AuthGuard],
+    data: { roles: ['rrhh', 'jefe'] }
+  },
+
+  {
+    path: 'permisos',
+    component: PermisosComponent,
     canActivate: [AuthGuard],
     data: { roles: ['rrhh', 'jefe'] }
   },

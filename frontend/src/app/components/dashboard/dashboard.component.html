@@ -1,117 +1,122 @@
-<div class="dashboard-container" *ngIf="!loading">
+<div class="dash" *ngIf="!loading">
 
-  <!-- Sección de estadísticas principales -->
-  <div class="stats-section">
-    <h3>Resumen de Personal</h3>
-    <div class="stats-container">
-      <!-- Tarjeta de Personal Total -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-users"></i></div>
-        <div class="info">
-          <p>Personal Total</p>
-          <h2>{{ data.personalTotal }}</h2>
-          <small *ngIf="!hasData">Esperando datos...</small>
-        </div>
+  <!-- ── KPI ROW ── -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-blue"><i class="fas fa-users"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.personalTotal }}</span>
+        <span class="kpi-lbl">Personal Total</span>
       </div>
-
-      <!-- Tarjeta de Personal Activo -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-user-check"></i></div>
-        <div class="info">
-          <p>Personal Activo</p>
-          <h2>{{ data.personalActivo }}</h2>
-          <small *ngIf="!hasData">Esperando datos...</small>
-        </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-green"><i class="fas fa-user-check"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.personalActivo }}</span>
+        <span class="kpi-lbl">Activo</span>
       </div>
-
-      <!-- Tarjeta de Personal Inactivo -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-user-slash"></i></div>
-        <div class="info">
-          <p>Personal Inactivo</p>
-          <h2>{{ data.personalInactivo }}</h2>
-          <small *ngIf="!hasData">Esperando datos...</small>
-        </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-red"><i class="fas fa-user-slash"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.personalInactivo }}</span>
+        <span class="kpi-lbl">Inactivo</span>
       </div>
-
-      <!-- Tarjeta de Personal sin Turno -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-user-clock"></i></div>
-        <div class="info">
-          <p>Personal sin Turno</p>
-          <h2>{{ data.personalSinTurno }}</h2>
-          <small *ngIf="!hasData">Esperando datos...</small>
-        </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-yellow"><i class="fas fa-user-clock"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.personalSinTurno }}</span>
+        <span class="kpi-lbl">Sin Turno</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-purple"><i class="fas fa-user-shield"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.personalConPermiso }}</span>
+        <span class="kpi-lbl">Con Permiso Hoy</span>
+      </div>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-blue"><i class="fas fa-calendar-alt"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.totalTurnos }}</span>
+        <span class="kpi-lbl">Total Turnos</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-teal"><i class="fas fa-calendar-check"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.turnosFijos }}</span>
+        <span class="kpi-lbl">Fijos</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-indigo"><i class="fas fa-sync-alt"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.turnosRotativos }}</span>
+        <span class="kpi-lbl">Rotativos</span>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-orange"><i class="fas fa-exclamation-triangle"></i></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ data.alertas }}</span>
+        <span class="kpi-lbl">Alertas</span>
       </div>
     </div>
   </div>
 
-  <!-- Sección de Turnos -->
-  <div class="stats-section">
-    <h3>Gestión de Turnos</h3>
-    <div class="stats-container">
-      <!-- Tarjeta de Total de Turnos (suma de fijos + rotativos) -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-calendar-alt"></i></div>
-        <div class="info">
-          <p>Total de Turnos</p>
-          <h2>{{ data.totalTurnos }}</h2>
+  <!-- ── MAIN ROW ── -->
+  <div class="main-row">
+
+    <!-- Columna izquierda: dona + tabla áreas -->
+    <div class="col-left">
+      <div class="panel">
+        <p class="panel-title">Distribución por Área</p>
+        <div class="donut-wrap">
+          <div *ngIf="!hasData" class="no-data">Sin datos</div>
+          <canvas id="areaChart" *ngIf="hasData"></canvas>
         </div>
       </div>
-
-      <!-- Tarjeta de Turnos Fijos -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-calendar-check"></i></div>
-        <div class="info">
-          <p>Turnos Fijos</p>
-          <h2>{{ data.turnosFijos }}</h2>
+      <div class="panel panel-area-table">
+        <p class="panel-title">Personal por Área</p>
+        <div class="area-table" *ngIf="hasData">
+          <div class="area-row" *ngFor="let a of data.distribucionArea; let i = index">
+            <span class="area-dot" [style.background]="areaColors[i % areaColors.length]"></span>
+            <span class="area-name">{{ a.area || 'Sin área' }}</span>
+            <span class="area-bar-wrap">
+              <span class="area-bar" [style.width.%]="(a.cantidad / data.personalTotal) * 100"
+                [style.background]="areaColors[i % areaColors.length]"></span>
+            </span>
+            <span class="area-num">{{ a.cantidad }}</span>
+          </div>
         </div>
-      </div>
-
-      <!-- Tarjeta de Turnos Rotativos -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-sync-alt"></i></div>
-        <div class="info">
-          <p>Turnos Rotativos</p>
-          <h2>{{ data.turnosRotativos }}</h2>
-        </div>
-      </div>
-
-      <!-- Tarjeta de Alertas -->
-      <div class="stat-card">
-        <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
-        <div class="info">
-          <p>Alertas</p>
-          <h2>{{ data.alertas }}</h2>
-          <small *ngIf="!hasData">No hay alertas registradas</small>
-        </div>
+        <div *ngIf="!hasData" class="no-data">Sin datos</div>
       </div>
     </div>
+
+    <!-- Columna central: asistencia semanal -->
+    <div class="panel panel-lg">
+      <p class="panel-title">Asistencia Semanal <span class="panel-sub">entradas registradas por día</span></p>
+      <div class="bar-wrap">
+        <div *ngIf="!hasData" class="no-data">Sin datos de asistencia</div>
+        <canvas id="asistenciaChart" *ngIf="hasData"></canvas>
+      </div>
+    </div>
+
+    <!-- Columna derecha: hora promedio de entrada -->
+    <div class="panel panel-md">
+      <p class="panel-title">Hora Moda de Entrada <span class="panel-sub">hora más frecuente por día</span></p>
+      <div class="bar-wrap">
+        <div *ngIf="!hasData" class="no-data">Sin datos</div>
+        <canvas id="horaChart" *ngIf="hasData"></canvas>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Contenido inferior -->
-  <div class="bottom-section">
-    
-    <!-- Gráfico de asistencia semanal -->
-    <div class="chart-container">
-      <h3>Asistencia Semanal</h3>
-      <div *ngIf="!hasData" class="no-data">
-        <p>No hay datos de asistencia disponibles</p>
-      </div>
-      <canvas id="asistenciaChart" *ngIf="hasData"></canvas>
-    </div>
-
-    <!-- Distribución de Personal por Área -->
-    <div class="chart-container">
-      <h3>Distribución de Personal por Área</h3>
-      <div *ngIf="!hasData" class="no-data">
-        <p>No hay datos disponibles</p>
-      </div>
-      <canvas id="areaChart" *ngIf="hasData"></canvas>
-    </div>
-  </div>
 </div>
 
-<div *ngIf="loading" class="loading">
-  <p>Cargando datos del dashboard...</p>
-</div>
+<div *ngIf="loading" class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>

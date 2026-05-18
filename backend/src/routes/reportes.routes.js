@@ -4,6 +4,7 @@ const db = require('../db');
 const { requireAuth } = require('../middlewares/auth');
 const { exec } = require('child_process');
 const path = require('path');
+const { esFeriado, getNombreFeriado } = require('../utils/feriados');
 
 
 // Listar todas las áreas
@@ -48,6 +49,11 @@ router.get('/asistencia', requireAuth, async (req, res) => {
           a.estado,
           CASE 
             WHEN e.renglon IN ('182', '189', '186', '183') THEN 'No aplica marcaje'
+            WHEN EXISTS (
+              SELECT 1 FROM permisos p 
+              WHERE p.empleado_id = e.id AND p.estado = 'AUTORIZADO'
+                AND at.fecha_inicio BETWEEN p.fecha_inicio AND p.fecha_fin
+            ) THEN 'Con Permiso'
             WHEN a.estado = 'COMPLETO' THEN 'Cumple horario'
             WHEN a.estado = 'TARDE' THEN 'Retraso'
             WHEN a.estado = 'FALTA' OR a.id IS NULL THEN 'Ausente'
@@ -55,6 +61,11 @@ router.get('/asistencia', requireAuth, async (req, res) => {
           END AS cumplimiento,
           CASE 
             WHEN e.renglon IN ('182', '189', '186', '183') THEN 'Presente (No obligatorio)'
+            WHEN EXISTS (
+              SELECT 1 FROM permisos p 
+              WHERE p.empleado_id = e.id AND p.estado = 'AUTORIZADO'
+                AND at.fecha_inicio BETWEEN p.fecha_inicio AND p.fecha_fin
+            ) THEN 'Con Permiso'
             WHEN a.estado IN ('COMPLETO','TARDE') THEN 'Presente'
             WHEN a.estado = 'FALTA' OR a.id IS NULL THEN 'Ausente'
             ELSE 'Ausente'
@@ -75,7 +86,17 @@ router.get('/asistencia', requireAuth, async (req, res) => {
       `, [area_id, desde, hasta]);
 
     // console.log(`[DEBUG] Rotativos encontrados: ${rotativos.length}`);
-    let registros = [...rotativos];
+    let registros = [...rotativos].map(r => {
+      const fecha = r.fecha instanceof Date ? r.fecha : new Date(r.fecha + 'T00:00:00');
+      if (esFeriado(fecha) && r.estado_dia === 'Ausente') {
+        return {
+          ...r,
+          cumplimiento: `Feriado (${getNombreFeriado(fecha)})`,
+          estado_dia: 'Feriado'
+        };
+      }
+      return r;
+    });
 
     // ==================== CONSULTA TURNOS FIJOS ====================
     const [fijos] = await db.query(`
@@ -134,20 +155,62 @@ router.get('/asistencia', requireAuth, async (req, res) => {
           if (fechaInicioLote && d < fechaInicioLote) continue;
           if (diasDescanso.includes(diaSemana)) continue;
 
+          const fechaStr = d.toISOString().split('T')[0];
+
+          // Si es feriado, marcar como tal y continuar
+          if (esFeriado(d)) {
+            registros.push({
+              area: f.area,
+              jefe_area: f.jefe_area,
+              empleado: f.empleado,
+              cargo: f.cargo,
+              fecha: fechaStr,
+              turno_asignado: f.turno_asignado,
+              tipo_turno: f.tipo_turno,
+              hora_entrada_programada: f.hora_entrada_programada,
+              hora_salida_programada: f.hora_salida_programada,
+              entrada_real: null,
+              salida_real: null,
+              cumplimiento: `Feriado (${getNombreFeriado(d)})`,
+              estado_dia: 'Feriado'
+            });
+            continue;
+          }
+
           const [asist] = await db.query(`
               SELECT entrada_real, salida_real, estado 
               FROM asistencias 
               WHERE empleado_id = ? AND fecha = ?`,
-            [f.empleado_id, d.toISOString().split('T')[0]]
+            [f.empleado_id, fechaStr]
           );
 
-          let entrada_real = null;
-          let salida_real = null;
-          let estado = null;
+          // Verificar si tiene permiso autorizado en esta fecha
+          const [permiso] = await db.query(`
+              SELECT id FROM permisos
+              WHERE empleado_id = ? AND estado = 'AUTORIZADO'
+                AND ? BETWEEN fecha_inicio AND fecha_fin
+              LIMIT 1`,
+            [f.empleado_id, fechaStr]
+          );
+
+          const tienePermiso = permiso.length > 0;
+          let entrada_real = null, salida_real = null, estado = null;
           if (asist.length > 0) {
             entrada_real = asist[0].entrada_real;
             salida_real = asist[0].salida_real;
             estado = asist[0].estado;
+          }
+
+          let cumplimiento, estado_dia;
+          if (tienePermiso) {
+            cumplimiento = 'Con Permiso';
+            estado_dia = 'Con Permiso';
+          } else if (estado) {
+            cumplimiento = estado === 'COMPLETO' ? 'Cumple horario' : estado === 'TARDE' ? 'Retraso' : 'Ausente';
+            estado_dia = ['COMPLETO', 'TARDE'].includes(estado) ? 'Presente' : 'Ausente';
+          } else {
+            cumplimiento = 'No aplica marcaje';
+            estado_dia = 'Presente (No obligatorio)';
           }
 
           registros.push({
@@ -155,21 +218,15 @@ router.get('/asistencia', requireAuth, async (req, res) => {
             jefe_area: f.jefe_area,
             empleado: f.empleado,
             cargo: f.cargo,
-            fecha: d.toISOString().split('T')[0],
+            fecha: fechaStr,
             turno_asignado: f.turno_asignado,
             tipo_turno: f.tipo_turno,
             hora_entrada_programada: f.hora_entrada_programada,
             hora_salida_programada: f.hora_salida_programada,
             entrada_real,
             salida_real,
-            cumplimiento: estado ?
-              (estado === 'COMPLETO' ? 'Cumple horario' :
-                estado === 'TARDE' ? 'Retraso' :
-                  estado === 'FALTA' ? 'Ausente' : 'Ausente')
-              : 'No aplica marcaje',
-            estado_dia: estado ?
-              (['COMPLETO', 'TARDE'].includes(estado) ? 'Presente' : 'Ausente')
-              : 'Presente (No obligatorio)'
+            cumplimiento,
+            estado_dia
           });
         }
       }
@@ -306,12 +363,13 @@ router.get('/buscar-empleados', requireAuth, async (req, res) => {
 
     // Verificar qué columnas existen en tu tabla empleados
     const [empleados] = await db.query(`
-        SELECT id, nombre_completo, renglon 
-        FROM empleados 
-        WHERE (nombre_completo LIKE ? OR renglon LIKE ?) 
-          AND eliminado_en IS NULL
-          AND activo = 1
-        ORDER BY nombre_completo 
+        SELECT e.id, e.nombre_completo, e.renglon, a.nombre_area
+        FROM empleados e
+        LEFT JOIN areas a ON e.area_id = a.id
+        WHERE (e.nombre_completo LIKE ? OR e.renglon LIKE ?) 
+          AND e.eliminado_en IS NULL
+          AND e.activo = 1
+        ORDER BY e.nombre_completo 
         LIMIT 20
       `, [`%${query}%`, `%${query}%`]);
 

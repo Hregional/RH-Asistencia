@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TurnosService, Turno } from '../../services/turnos.service';
+import { NgxMaterialTimepickerModule } from 'ngx-material-timepicker';
 
 @Component({
     selector: 'app-gestion-turnos',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, NgxMaterialTimepickerModule],
     templateUrl: './gestion-turnos.component.html',
     styleUrls: ['./gestion-turnos.component.scss']
 })

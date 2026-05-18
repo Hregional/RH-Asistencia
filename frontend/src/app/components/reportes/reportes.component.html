@@ -10,11 +10,13 @@
           <option value="mes">Mes Completo</option>
           <option value="biometricos">Eventos Biométricos</option>
           <option value="horarios">Planificación de Horarios</option>
+          <option value="permisos">Permisos</option>
           <!-- <option value="todo">Todo el Historial</option> -->
         </select>
       </div>
 
-      <div class="filtro-group" *ngIf="tipoReporte !== 'biometricos' && tipoReporte !== 'todo'">
+      <div class="filtro-group"
+        *ngIf="tipoReporte !== 'biometricos' && tipoReporte !== 'todo' && tipoReporte !== 'permisos'">
         <label>Área:</label>
         <select [(ngModel)]="areaSeleccionada" (change)="onAreaChange()">
           <option value="">-- Seleccione área --</option>
@@ -34,7 +36,8 @@
         </select>
       </div>
 
-      <div class="filtro-group" *ngIf="tipoReporte !== 'todo' && tipoReporte !== 'horarios'">
+      <div class="filtro-group"
+        *ngIf="tipoReporte !== 'todo' && tipoReporte !== 'horarios' && tipoReporte !== 'permisos'">
         <label>Mes:</label>
         <input type="month" [(ngModel)]="mesSeleccionado" (change)="generarSemanas()" />
       </div>
@@ -55,6 +58,84 @@
           <i class="fa fa-calendar"></i>
         </div>
       </div>
+
+      <!-- Filtros para reporte de permisos -->
+      <ng-container *ngIf="tipoReporte === 'permisos'">
+
+        <!-- Fila 1: Tipo de filtro de fecha -->
+        <div class="filtro-group">
+          <label>Período:</label>
+          <select [(ngModel)]="tipoFiltroPermisos" (change)="onTipoFiltroPermisosChange()">
+            <option value="mes">Mes</option>
+            <option value="dia">Día específico</option>
+            <option value="rango">Rango de fechas</option>
+          </select>
+        </div>
+
+        <!-- Día específico -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'dia'">
+          <label>Día:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaDesde" (change)="fechaHasta = fechaDesde" />
+            <i class="fa fa-calendar"></i>
+          </div>
+        </div>
+
+        <!-- Mes -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'mes'">
+          <label>Mes:</label>
+          <input type="month" [(ngModel)]="mesPermisos" (change)="onMesPermisosChange()" />
+        </div>
+
+        <!-- Rango -->
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'rango'">
+          <label>Desde:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaDesde" />
+            <i class="fa fa-calendar"></i>
+          </div>
+        </div>
+        <div class="filtro-group" *ngIf="tipoFiltroPermisos === 'rango'">
+          <label>Hasta:</label>
+          <div class="input-icon">
+            <input type="date" [(ngModel)]="fechaHasta" />
+            <i class="fa fa-calendar"></i>
+          </div>
+        </div>
+
+        <!-- Fila 2: Área y Empleado -->
+        <div class="filtro-group">
+          <label>Área:</label>
+          <select [(ngModel)]="areaSeleccionada">
+            <option value="">-- Todas las áreas --</option>
+            <option value="sin_area">Sin área asignada</option>
+            <option *ngFor="let area of areas" [value]="area.id">{{ area.nombre_area }}</option>
+          </select>
+        </div>
+
+        <div class="filtro-group">
+          <label>Empleado:</label>
+          <div class="busqueda-empleado-container">
+            <input type="text" [(ngModel)]="empleadoBusqueda" (input)="buscarEmpleados()"
+              placeholder="Buscar por nombre..." class="busqueda-input" autocomplete="off">
+            <div *ngIf="mostrandoResultados && empleadosEncontrados.length > 0" class="resultados-busqueda">
+              <div *ngFor="let emp of empleadosEncontrados" (click)="seleccionarEmpleado(emp)" class="resultado-item">
+                {{ emp.nombre_completo }}
+                <small *ngIf="emp.area_nombre" style="color:#888"> — {{ emp.area_nombre }}</small>
+                <small *ngIf="!emp.area_nombre" style="color:#aaa"> — Sin área</small>
+              </div>
+            </div>
+            <button *ngIf="empleadoSeleccionado" (click)="limpiarBusquedaEmpleado()" class="btn-limpiar"
+              title="Limpiar selección">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+          <small *ngIf="empleadoSeleccionado" style="color:#555; margin-top:3px; display:block;">
+            Seleccionado: <strong>{{ empleadoSeleccionado.nombre_completo }}</strong>
+          </small>
+        </div>
+
+      </ng-container>
 
       <div class="filtro-group" *ngIf="tipoReporte === 'biometricos' && tipoFiltroBiometricos === 'dia'">
         <label>Día Específico:</label>
@@ -106,30 +187,46 @@
       </div>
       <!-- En la sección de botones, después del botón Generar -->
       <div class="botones-container">
-        <button (click)="generarReporte()" [disabled]="
+        <!-- Botón generar normal -->
+        <button *ngIf="tipoReporte !== 'permisos'" (click)="generarReporte()" [disabled]="
             (tipoReporte === 'biometricos' && !mesSeleccionado && !diaEspecifico) ||
-            (tipoReporte !== 'biometricos' && !areaSeleccionada) || 
-            (tipoReporte === 'semana' && !semanaSeleccionada) || 
+            (tipoReporte !== 'biometricos' && !areaSeleccionada) ||
+            (tipoReporte === 'semana' && !semanaSeleccionada) ||
             (tipoReporte !== 'todo' && tipoReporte !== 'horarios' && !mesSeleccionado) ||
             (tipoReporte === 'horarios' && (!fechaDesde || !fechaHasta))
           ">
           <span>Generar</span>
         </button>
 
-        <!-- NUEVO BOTÓN ACTUALIZAR BIOMÉTRICO -->
+        <!-- Botón generar permisos -->
+        <button *ngIf="tipoReporte === 'permisos'" (click)="generarReportePermisos()"
+          [disabled]="!fechaDesde || !fechaHasta">
+          <span>Generar</span>
+        </button>
+
         <button *ngIf="isSuperAdmin" (click)="actualizarBiometrico()" class="btn-biometrico"
           [disabled]="actualizandoBiometrico">
           <span *ngIf="!actualizandoBiometrico">Actualizar Biométrico</span>
           <span *ngIf="actualizandoBiometrico">Actualizando...</span>
         </button>
 
-        <button (click)="descargarExcel()" [disabled]="registros.length === 0 && eventosBiometricos.length === 0"
-          class="btn-excel">
+        <!-- Excel -->
+        <button *ngIf="tipoReporte !== 'permisos'" (click)="descargarExcel()"
+          [disabled]="registros.length === 0 && eventosBiometricos.length === 0" class="btn-excel">
+          <span>Descargar Excel</span>
+        </button>
+        <button *ngIf="tipoReporte === 'permisos'" (click)="descargarExcelPermisos()"
+          [disabled]="reportePermisos.length === 0" class="btn-excel">
           <span>Descargar Excel</span>
         </button>
 
-        <button (click)="descargarPDF()"
+        <!-- PDF -->
+        <button *ngIf="tipoReporte !== 'permisos'" (click)="descargarPDF()"
           [disabled]="(tipoReporte !== 'horarios' && registros.length === 0 && eventosBiometricos.length === 0) || (tipoReporte === 'horarios' && horarios.length === 0)">
+          <span>Descargar PDF</span>
+        </button>
+        <button *ngIf="tipoReporte === 'permisos'" (click)="descargarPDFPermisos()"
+          [disabled]="reportePermisos.length === 0">
           <span>Descargar PDF</span>
         </button>
 
@@ -313,5 +410,60 @@
         Empleado filtrado: <strong>{{ empleadoSeleccionado.nombre_completo }}</strong>
         <span *ngIf="empleadoSeleccionado.renglon">(Renglón: {{ empleadoSeleccionado.renglon }})</span>
       </p>
+    </div>
+
+    <!-- TABLA PARA PERMISOS -->
+    <div *ngIf="!cargando && tipoReporte === 'permisos' && reportePermisos.length > 0" class="resultados">
+      <p class="resumen">
+        Reporte de Permisos |
+        Período: <strong>{{ fechaDesde | date:'dd/MM/yyyy':'UTC' }} al {{ fechaHasta | date:'dd/MM/yyyy':'UTC'
+          }}</strong> |
+        Total: <strong>{{ reportePermisos.length }}</strong>
+        <span *ngIf="empleadoSeleccionado"> | Empleado: <strong>{{ empleadoSeleccionado.nombre_completo
+            }}</strong></span>
+      </p>
+      <div class="tabla-container">
+        <table class="tabla-reporte">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Empleado</th>
+              <th>Área</th>
+              <th>Cargo</th>
+              <th>Tipo Permiso</th>
+              <th>Fecha Inicio</th>
+              <th>Fecha Fin</th>
+              <th>Días</th>
+              <th>Estado</th>
+              <th>Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of reportePermisos; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ p.nombre_completo }}</td>
+              <td>{{ p.area_nombre || 'N/A' }}</td>
+              <td>{{ p.rol_nombre || 'N/A' }}</td>
+              <td>{{ p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Otro' }}</td>
+              <td>{{ p.fecha_inicio | date:'dd/MM/yyyy':'UTC' }}</td>
+              <td>{{ p.fecha_fin | date:'dd/MM/yyyy':'UTC' }}</td>
+              <td style="text-align:center">{{ p.dias_solicitados }}</td>
+              <td>
+                <span [ngClass]="{
+                  'estado-presente': p.estado === 'AUTORIZADO',
+                  'estado-ausente':  p.estado === 'RECHAZADO',
+                  'cumplimiento-advertencia': p.estado === 'PENDIENTE'
+                }">{{ p.estado }}</span>
+              </td>
+              <td>{{ p.observaciones || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div *ngIf="!cargando && tipoReporte === 'permisos' && reportePermisos.length === 0 && fechaDesde && fechaHasta"
+      class="sin-resultados">
+      <p>No se encontraron permisos para los filtros seleccionados.</p>
     </div>
   </div>

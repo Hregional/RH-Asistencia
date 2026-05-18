@@ -36,6 +36,7 @@
     "jspdf-autotable": "^5.0.2",
     "keycloak-angular": "^20.0.0",
     "keycloak-js": "^26.2.0",
+    "ngx-material-timepicker": "^13.1.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "xlsx": "^0.18.5",

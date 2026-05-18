@@ -56,4 +56,6 @@ module.exports = function attachActor(req, _res, next) {
   next();
 };
 
+module.exports.ensureActor = ensureActor;
+
 

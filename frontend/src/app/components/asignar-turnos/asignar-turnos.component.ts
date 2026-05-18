@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import { TurnosService } from '../../services/turnos.service';
 import { CalendarioTurnosComponent } from '../calendario-turnos/calendario-turnos.component';
 import { EmpleadosService } from '../../services/empleados.service';
+import { PermisosService } from '../../services/permisos.service';
 import { RemplazoComponent } from '../reemplazo/remplazo.component';
 import { RenovacionComponent } from '../renovacion/renovacion.component';
 import { FijoComponent } from '../fijo/fijo.component';
@@ -93,6 +94,11 @@ export class AsignarTurnosComponent implements OnInit, OnDestroy {
   private filtroTimeout: any;
 
   private empleadosService = inject(EmpleadosService);
+  private permisosSvc = inject(PermisosService);
+
+  // Mapa de permisos por empleado_id para el rango de fechas seleccionado
+  permisosEmpleados = new Map<number, { autorizado: boolean; pendiente: boolean; detalle: string }>();
+
   constructor(private turnosService: TurnosService) { }
 
   // ===== Estado de vistas =====
@@ -634,7 +640,47 @@ export class AsignarTurnosComponent implements OnInit, OnDestroy {
       }
 
       this.empleadosFiltrados = filtrados;
+      this.cargarPermisosParaEmpleados(filtrados);
     }, 300);
+  }
+
+  cargarPermisosParaEmpleados(empleados: Empleado[]) {
+    const desde = this.fechasForm.value.fecha_inicio;
+    const hasta = this.fechasForm.value.fecha_fin;
+    if (!desde || !hasta) return;
+
+    empleados.forEach(emp => {
+      if (!emp.id) return;
+      this.permisosSvc.getPermisosVigentes(emp.id, desde, hasta).subscribe({
+        next: (res) => {
+          if (res.success && res.permisos?.length > 0) {
+            const detalle = res.permisos.map((p: any) =>
+              `${p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Permiso'} (${p.fecha_inicio} - ${p.fecha_fin})`
+            ).join(', ');
+            this.permisosEmpleados.set(emp.id!, {
+              autorizado: res.tienePermisoAutorizado,
+              pendiente: res.tienePermisoPendiente,
+              detalle
+            });
+          } else {
+            this.permisosEmpleados.delete(emp.id!);
+          }
+        },
+        error: () => {}
+      });
+    });
+  }
+
+  getPermisoEmpleado(id: number) {
+    return this.permisosEmpleados.get(id);
+  }
+
+  tienePermisoAutorizado(id: number): boolean {
+    return this.permisosEmpleados.get(id)?.autorizado ?? false;
+  }
+
+  tienePermisoPendiente(id: number): boolean {
+    return this.permisosEmpleados.get(id)?.pendiente ?? false;
   }
 
   toggleEmpleadoEquipo(empleado: Empleado) {
@@ -646,6 +692,16 @@ export class AsignarTurnosComponent implements OnInit, OnDestroy {
     const index = this.equipoCompleto.findIndex(e => e.id === empleado.id);
 
     if (index === -1) {
+      const permiso = this.getPermisoEmpleado(empleado.id!);
+
+      if (permiso?.autorizado) {
+        if (!confirm(`⚠️ ${empleado.nombre_completo} tiene permiso AUTORIZADO en este período:\n${permiso.detalle}\n\n¿Desea agregarlo de todas formas?`)) return;
+      } else if (permiso?.pendiente) {
+        const detalle = permiso.detalle || '';
+        this.info = `⚠️ ${empleado.nombre_completo} tiene una solicitud de permiso pendiente: ${detalle}`;
+        setTimeout(() => this.info = null, 5000);
+      }
+
       this.equipoCompleto.push({ ...empleado });
     } else {
       this.equipoCompleto.splice(index, 1);

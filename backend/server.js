@@ -8,16 +8,17 @@ const { testConnectionAll } = require('./src/services/biometric/hikvision.servic
 
 
 const biometricRouter = require('./src/routes/biometric.routes.js');
-const healthRouter    = require('./src/routes/health.routes.js');
+const healthRouter = require('./src/routes/health.routes.js');
 const empleadosRouter = require('./src/routes/empleados.routes.js');
-const rolesRoutes     = require('./src/routes/roles.routes.js');
-const areasRoutes     = require('./src/routes/areas.routes.js');
+const rolesRoutes = require('./src/routes/roles.routes.js');
+const areasRoutes = require('./src/routes/areas.routes.js');
 const dashboardRouter = require('./src/routes/dashboard.routes.js');
-const turnosRoutes    = require('./src/routes/turnos.routes.js');
+const turnosRoutes = require('./src/routes/turnos.routes.js');
 const asignacionesRoutes = require('./src/routes/asignaciones.routes.js');
-const attachActor     = require('./src/middlewares/actor.js');
-const auditRouter     = require('./src/routes/audit.routes.js');
-const reportesRouter  = require('./src/routes/reportes.routes.js');
+const attachActor = require('./src/middlewares/actor.js');
+const auditRouter = require('./src/routes/audit.routes.js');
+const reportesRouter = require('./src/routes/reportes.routes.js');
+const permisosRouter = require('./src/routes/permisos.routes.js');
 const biometricPushRoutes = require('./src/routes/biometric.push.routes.js');
 require('./src/scripts/scheduler.js');
 
@@ -39,14 +40,14 @@ app.use('/api/health', healthRouter);
 // Rutas protegidas
 app.use('/api/biometric', requireAuth, requireRRHHorJefe, biometricRouter);
 app.use('/api/empleados', requireAuth, requireRRHHorJefe, empleadosRouter);
-app.use('/api/roles', requireAuth,requireRRHHorJefe, rolesRoutes);
-app.use('/api/areas', requireAuth,requireRRHHorJefe, areasRoutes);
+app.use('/api/roles', requireAuth, requireRRHHorJefe, rolesRoutes);
+app.use('/api/areas', requireAuth, requireRRHHorJefe, areasRoutes);
 app.use('/api/dashboard', requireAuth, dashboardRouter);
 app.use('/api/turnos', requireAuth, requireRRHHorJefe, turnosRoutes);
 app.use('/api/asignaciones', requireAuth, requireRRHHorJefe, asignacionesRoutes);
-app.use('/api/audit',        requireAuth, attachActor, auditRouter);
 app.use('/api/audit', requireAuth, attachActor, auditRouter);
 app.use('/api/reportes', requireAuth, requireRRHHorJefe, reportesRouter);
+app.use('/api/permisos', requireAuth, requireRRHHorJefe, permisosRouter);
 app.use('/api', biometricPushRoutes);
 
 

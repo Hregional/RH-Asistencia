@@ -231,6 +231,8 @@ export class ReportesComponent implements OnInit {
       this.generarReporteBiometricos();
     } else if (this.tipoReporte === 'horarios') {
       this.generarReporteHorarios();
+    } else if (this.tipoReporte === 'permisos') {
+      this.generarReportePermisos();
     } else {
       this.generarReporteAsistencia();
     }
@@ -510,7 +512,8 @@ export class ReportesComponent implements OnInit {
   getCumplimientoClass(valor: string): string {
     if (!valor) return '';
     const v = valor.toLowerCase();
-
+    if (v.includes('con permiso')) return 'cumplimiento-permiso';
+    if (v.includes('feriado')) return 'cumplimiento-feriado';
     if (v.includes('cumple')) return 'cumplimiento-exito';
     if (v.includes('retraso')) return 'cumplimiento-advertencia';
     if (v.includes('ausente')) return 'cumplimiento-error';
@@ -522,10 +525,11 @@ export class ReportesComponent implements OnInit {
   getEstadoClass(estado: string): string {
     if (!estado) return '';
     if (estado.includes('No obligatorio')) return 'estado-exento';
+    if (estado.includes('Con Permiso')) return 'estado-permiso';
+    if (estado.includes('Feriado')) return 'estado-feriado';
     if (estado.includes('Presente')) return 'estado-presente';
     if (estado.includes('Ausente')) return 'estado-ausente';
     if (estado.includes('Retraso') || estado.includes('Tarde')) return 'estado-retraso';
-
     return '';
   }
 
@@ -1124,17 +1128,22 @@ export class ReportesComponent implements OnInit {
       this.semanaSeleccionada = null;
     }
 
-    // Resetear filtros de eventos Biométricos
-    // Resetear filtros de eventos biométricos
     if (this.tipoReporte === 'biometricos') {
       this.tipoFiltroBiometricos = 'mes';
       this.diaEspecifico = '';
       this.fechaDesde = '';
       this.fechaHasta = '';
-      this.inicializarFechasPorDefecto(); // Inicializar rango por defecto
+      this.inicializarFechasPorDefecto();
     } else if (this.tipoReporte === 'horarios') {
       this.fechaDesde = '';
       this.fechaHasta = '';
+    } else if (this.tipoReporte === 'permisos') {
+      this.inicializarFechasPorDefecto();
+      this.estadoPermisoFiltro = 'AUTORIZADO';
+      this.tipoFiltroPermisos = 'mes';
+      this.mesPermisos = new Date().toISOString().substring(0, 7);
+      this.onMesPermisosChange();
+      this.reportePermisos = [];
     } else {
       this.diaEspecifico = '';
     }
@@ -1142,5 +1151,133 @@ export class ReportesComponent implements OnInit {
     this.limpiarBusquedaEmpleado();
     this.registros = [];
     this.eventosBiometricos = [];
+  }
+
+  // ─── REPORTE DE PERMISOS ──────────────────────────────────────────
+  estadoPermisoFiltro: string = 'AUTORIZADO';
+  reportePermisos: any[] = [];
+  tipoFiltroPermisos: string = 'mes';
+  mesPermisos: string = '';
+
+  onTipoFiltroPermisosChange() {
+    this.fechaDesde = '';
+    this.fechaHasta = '';
+    this.mesPermisos = '';
+    this.reportePermisos = [];
+  }
+
+  onMesPermisosChange() {
+    if (!this.mesPermisos) return;
+    const [year, month] = this.mesPermisos.split('-').map(Number);
+    const diasMes = new Date(year, month, 0).getDate();
+    this.fechaDesde = `${year}-${String(month).padStart(2, '0')}-01`;
+    this.fechaHasta = `${year}-${String(month).padStart(2, '0')}-${String(diasMes).padStart(2, '0')}`;
+  }
+
+  generarReportePermisos() {
+    if (!this.fechaDesde || !this.fechaHasta) {
+      alert('Seleccione el período.');
+      return;
+    }
+    this.cargando = true;
+    this.repService.getReportePermisos({
+      desde: this.fechaDesde,
+      hasta: this.fechaHasta,
+      area_id: this.areaSeleccionada,
+      empleado_id: this.empleadoSeleccionado?.id,
+      estado: 'AUTORIZADO'  // siempre solo autorizados
+    }).subscribe({
+      next: (res: any) => {
+        this.reportePermisos = res.data || [];
+        this.cargando = false;
+        if (this.reportePermisos.length === 0) alert('No se encontraron permisos para los filtros seleccionados.');
+      },
+      error: (err: any) => {
+        this.cargando = false;
+        alert('Error al generar el reporte: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  descargarExcelPermisos() {
+    if (this.reportePermisos.length === 0) { alert('No hay datos para exportar.'); return; }
+    const datos = this.reportePermisos.map((p, i) => ({
+      '#': i + 1,
+      'Empleado': p.nombre_completo,
+      'Área': p.area_nombre || 'N/A',
+      'Cargo': p.rol_nombre || 'N/A',
+      'Tipo Permiso': p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Otro',
+      'Fecha Inicio': p.fecha_inicio,
+      'Fecha Fin': p.fecha_fin,
+      'Días': p.dias_solicitados,
+      'Estado': p.estado,
+      'Observaciones': p.observaciones || ''
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(datos);
+    ws['!cols'] = [5, 25, 20, 20, 20, 12, 12, 8, 12, 30].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Permisos');
+    XLSX.writeFile(wb, `Reporte_Permisos_${this.fechaDesde}_${this.fechaHasta}.xlsx`);
+  }
+
+  descargarPDFPermisos() {
+    if (this.reportePermisos.length === 0) { alert('No hay datos para exportar.'); return; }
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const logo = new Image();
+    logo.src = 'assets/logo-hospital.png';
+    const fechaGen = new Date().toLocaleDateString('es-GT');
+
+    const generarPDF = () => {
+      try { doc.addImage(logo, 'PNG', 14, 8, 25, 25); } catch (e) { }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Hospital Regional de Occidente', 45, 15);
+      doc.setFontSize(13);
+      doc.text('Reporte de Permisos', 45, 23);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período: ${this.fechaDesde} al ${this.fechaHasta}`, 14, 38);
+      doc.text(`Estado: ${this.estadoPermisoFiltro}`, 120, 38);
+      doc.text(`Generado: ${fechaGen}`, 220, 38);
+
+      autoTable(doc, {
+        columns: [
+          { header: '#', dataKey: 'num' },
+          { header: 'Empleado', dataKey: 'nombre' },
+          { header: 'Área', dataKey: 'area' },
+          { header: 'Tipo Permiso', dataKey: 'tipo' },
+          { header: 'Inicio', dataKey: 'inicio' },
+          { header: 'Fin', dataKey: 'fin' },
+          { header: 'Días', dataKey: 'dias' },
+          { header: 'Estado', dataKey: 'estado' }
+        ],
+        body: this.reportePermisos.map((p, i) => ({
+          num: i + 1,
+          nombre: p.nombre_completo,
+          area: p.area_nombre || 'N/A',
+          tipo: p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Otro',
+          inicio: p.fecha_inicio,
+          fin: p.fecha_fin,
+          dias: p.dias_solicitados,
+          estado: p.estado
+        })),
+        startY: 45,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [0, 82, 155], textColor: 255, halign: 'center' },
+        didParseCell: (data) => {
+          if (data.column.dataKey === 'estado') {
+            const v = String(data.cell.raw);
+            if (v === 'AUTORIZADO') data.cell.styles.textColor = [25, 135, 84];
+            else if (v === 'RECHAZADO') data.cell.styles.textColor = [220, 53, 69];
+            else data.cell.styles.textColor = [230, 126, 34];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+      doc.save(`Reporte_Permisos_${this.fechaDesde}_${this.fechaHasta}.pdf`);
+    };
+
+    if (logo.complete) generarPDF();
+    else { logo.onload = generarPDF; logo.onerror = generarPDF; }
   }
 }

@@ -6,12 +6,13 @@ const { requireAuth, requireRRHHorJefe } = require('../middlewares/auth.js');
 // Helper: genera ultimos 7 días 
 function last7Days() {
   const days = [];
-  const today = new Date();
+  // Usar hora de Guatemala (UTC-6)
+  const now = new Date();
+  const gt = new Date(now.getTime() - 6 * 60 * 60 * 1000);
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const iso = d.toISOString().slice(0, 10);
-    days.push(iso);
+    const d = new Date(gt);
+    d.setUTCDate(gt.getUTCDate() - i);
+    days.push(d.toISOString().slice(0, 10));
   }
   return days;
 }
@@ -142,6 +143,40 @@ router.get('/summary', requireAuth, requireRRHHorJefe, async (_req, res) => {
     const map = new Map(asistRaw.map(r => [r.dia.toISOString?.() ? r.dia.toISOString().slice(0,10) : String(r.dia), r.entradas]));
     const asistenciaSemanal = days.map(d => ({ fecha: d, entradas: map.get(d) || 0 }));
 
+    // 11) MODA de hora de entrada por día (últimos 7 días)
+    // Cálculo: agrupamos entradas en bloques de 30 minutos (1800 seg * 1800 seg),
+    // contamos cuántas entradas hay por día,
+    // y se toma el bloque con mayor frecuencia (ROW_NUMBER ORDER BY COUNT DESC).
+    // Resultado: la franja horaria donde más empleados registraron entrada ese día.
+    const [modaRaw] = await db.query(`
+      SELECT 
+        dia,
+        hora_bloque AS moda_segundos
+      FROM (
+        SELECT 
+          DATE(fecha_hora) AS dia,
+          TIME_TO_SEC(TIME(fecha_hora)) DIV 1800 * 1800 AS hora_bloque,
+          COUNT(*) AS frecuencia,
+          ROW_NUMBER() OVER (PARTITION BY DATE(fecha_hora) ORDER BY COUNT(*) DESC) AS rn
+        FROM registros_asistencia
+        WHERE fecha_hora >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND tipo_evento = 'ENTRADA'
+        GROUP BY DATE(fecha_hora), hora_bloque
+      ) ranked
+      WHERE rn = 1
+      ORDER BY dia ASC
+    `);
+
+    // Convertir segundos a decimal (ej: 27000 seg → 7.5 → 7:30 AM)
+    const modaMap = new Map(modaRaw.map((r) => {
+      const dia = r.dia.toISOString?.() ? r.dia.toISOString().slice(0,10) : String(r.dia);
+      const horaDecimal = Math.round((Number(r.moda_segundos) / 3600) * 100) / 100;
+      return [dia, horaDecimal];
+    }));
+
+    // Alinear con los 7 días del dashboard (null si no hay datos ese día)
+    const modaEntrada = days.map(d => ({ fecha: d, hora: modaMap.get(d) ?? null }));
+
     res.json({
       success: true,
       data: {
@@ -154,7 +189,8 @@ router.get('/summary', requireAuth, requireRRHHorJefe, async (_req, res) => {
         personalSinTurno,
         proximosTurnos: bucket,
         asistenciaSemanal,
-        distribucionArea
+        distribucionArea,
+        modaEntrada
       }
     });
 

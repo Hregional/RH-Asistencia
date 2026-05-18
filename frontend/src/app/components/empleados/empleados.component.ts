@@ -1,6 +1,7 @@
 import { Component, OnInit } from "@angular/core";
 import { EmpleadosService, Empleado, ApiResponse, Rol, Area } from "../../services/empleados.service";
 import { AreasService } from "../../services/areass.service";
+import { PermisosService } from "../../services/permisos.service";
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
@@ -28,6 +29,11 @@ export class EmpleadosComponent implements OnInit {
   loading = false;
   error: string | null = null;
 
+  // Mapa de permisos vigentes por empleado_id
+  permisosVigentes = new Map<number, { estado: string; fecha_inicio: string; fecha_fin: string }>();
+  // Objeto plano para detección de cambios de Angular
+  permisosVigentesObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string }> = {};
+
   showForm = false;
   editingEmpleado: Empleado | null = null;
   empleadofrorm: Empleado = {
@@ -46,13 +52,13 @@ export class EmpleadosComponent implements OnInit {
   };
 
   // Nuevas propiedades para gestión de supervisión
-  supervision: 'NINGUNO'|'ESPECIFICO'|'TITULAR' = 'NINGUNO';
+  supervision: 'NINGUNO' | 'ESPECIFICO' | 'TITULAR' = 'NINGUNO';
 
   // mini forms
   showNewRolForm = false;
   showNewAreaForm = false;
-  newArea = { nombre_area: '',  descripcion: '' };
-  newRol = { nombre_rol: '',  descripcion: '' };
+  newArea = { nombre_area: '', descripcion: '' };
+  newRol = { nombre_rol: '', descripcion: '' };
 
   // errores de servidor por campo
   serverErrors = {
@@ -73,11 +79,30 @@ export class EmpleadosComponent implements OnInit {
   constructor(
     private empleadosService: EmpleadosService,
     private areasSvc: AreasService,
-    private kc: KeycloakService
-  ) {}
+    private kc: KeycloakService,
+    private permisosSvc: PermisosService
+  ) { }
 
   // texto de busqueda
   searchTerm = '';
+
+  // Paginación
+  currentPage = 1;
+  itemsPerPage = 10;
+  totalPages = 1;
+
+  get paginatedEmpleados(): Empleado[] {
+    const start = (this.currentPage - 1) * this.itemsPerPage;
+    return this.filteredEmpleados.slice(start, start + this.itemsPerPage);
+  }
+
+  updatePagination(): void {
+    this.totalPages = Math.ceil(this.filteredEmpleados.length / this.itemsPerPage) || 1;
+    if (this.currentPage > this.totalPages) this.currentPage = 1;
+  }
+
+  prevPage(): void { if (this.currentPage > 1) { this.currentPage--; } }
+  nextPage(): void { if (this.currentPage < this.totalPages) { this.currentPage++; } }
 
   // Normaliza para comparar sin tildes y en minúsculas
   private norm(s: string): string {
@@ -116,6 +141,8 @@ export class EmpleadosComponent implements OnInit {
 
   clearSearch() {
     this.searchTerm = '';
+    this.currentPage = 1;
+    this.updatePagination();
   }
 
 
@@ -193,7 +220,7 @@ export class EmpleadosComponent implements OnInit {
     });
   }
 
-    syncBiometricUsers() {
+  syncBiometricUsers() {
     if (!confirm('La consulta tardara un momento. ¿Desea continuar?')) {
       return;
     }
@@ -255,6 +282,8 @@ export class EmpleadosComponent implements OnInit {
       next: (response: any) => {
         if (response.success && response.data) {
           this.empleados = response.data;
+          this.updatePagination();
+          this.cargarPermisosVigentes();
         } else {
           this.error = response.error || 'Error cargando empleados';
         }
@@ -266,6 +295,45 @@ export class EmpleadosComponent implements OnInit {
         console.error('Error:', err);
       }
     });
+  }
+
+  cargarPermisosVigentes() {
+    this.permisosSvc.getPermisosVigentesHoy().subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          const nuevoObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string }> = {};
+          // Si un empleado tiene AUTORIZADO y PENDIENTE, AUTORIZADO tiene prioridad
+          res.data.forEach((p: any) => {
+            const existing = nuevoObj[p.empleado_id];
+            if (!existing || p.estado === 'AUTORIZADO') {
+              nuevoObj[p.empleado_id] = {
+                estado: p.estado,
+                fecha_inicio: p.fecha_inicio,
+                fecha_fin: p.fecha_fin
+              };
+            }
+          });
+          this.permisosVigentesObj = { ...nuevoObj };
+          this.permisosVigentes = new Map(Object.entries(nuevoObj).map(([k, v]) => [Number(k), v]));
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  getEstadoEmpleado(emp: Empleado): string {
+    if (!emp.activo) return 'Inactivo';
+    const permiso = this.permisosVigentesObj[emp.id!];
+    // Solo muestra "Con Permiso" si el permiso está AUTORIZADO y en rango de fechas activo hoy
+    if (permiso?.estado === 'AUTORIZADO') return 'Con Permiso';
+    return 'Activo';
+  }
+
+  getEstadoEmpleadoClass(emp: Empleado): string {
+    if (!emp.activo) return 'status-inactive';
+    const permiso = this.permisosVigentesObj[emp.id!];
+    if (permiso?.estado === 'AUTORIZADO') return 'status-permiso';
+    return 'status-active';
   }
 
   saveArea(form?: NgForm) {
@@ -291,26 +359,26 @@ export class EmpleadosComponent implements OnInit {
   }
 
   saveRol(form?: NgForm) {
-  if (form && form.invalid) return;
-  const { nombre_rol, descripcion } = this.newRol;
-  if (!nombre_rol?.trim()) return;
+    if (form && form.invalid) return;
+    const { nombre_rol, descripcion } = this.newRol;
+    if (!nombre_rol?.trim()) return;
 
-  this.loading = true;
-  this.empleadosService.createRol({ nombre_rol: nombre_rol.trim(), descripcion: (descripcion ?? '').trim() || null })
-    .subscribe({
-      next: (r) => {
-        this.loading = false;
-        if (r.success) {
-          this.newRol = { nombre_rol: '', descripcion: '' };
-          this.showNewRolForm = false;
-          this.loadRoles();
-        } else {
-          this.error = r.error || 'Error creando rol';
-        }
-      },
-      error: () => { this.loading = false; this.error = 'Error de conexión al servidor'; }
-    });
-}
+    this.loading = true;
+    this.empleadosService.createRol({ nombre_rol: nombre_rol.trim(), descripcion: (descripcion ?? '').trim() || null })
+      .subscribe({
+        next: (r) => {
+          this.loading = false;
+          if (r.success) {
+            this.newRol = { nombre_rol: '', descripcion: '' };
+            this.showNewRolForm = false;
+            this.loadRoles();
+          } else {
+            this.error = r.error || 'Error creando rol';
+          }
+        },
+        error: () => { this.loading = false; this.error = 'Error de conexión al servidor'; }
+      });
+  }
 
   showCreateForm() {
     this.showForm = true;
@@ -361,7 +429,7 @@ export class EmpleadosComponent implements OnInit {
     input.value = sanitized;
     this.empleadofrorm.nombre_completo = sanitized;
   }
-  
+
   onEmailInput(ev: Event) {
     const input = ev.target as HTMLInputElement;
     const sanitized = (input.value || '').trim().toLowerCase();
@@ -396,17 +464,17 @@ export class EmpleadosComponent implements OnInit {
         : this.empleadosService.createEmpleado(this.empleadofrorm);
 
       const response: any = await firstValueFrom(op);
-      
+
       if (!response.success) {
         this.error = response.error || 'Error guardando empleado';
         this.loading = false;
         return;
       }
 
-      const empleadoId = this.editingEmpleado 
-        ? this.editingEmpleado.id 
+      const empleadoId = this.editingEmpleado
+        ? this.editingEmpleado.id
         : response?.data?.id;
-      
+
       const areaId = this.empleadofrorm.area_id;
 
       // 2) Sincronizar supervisor en el área
@@ -430,10 +498,10 @@ export class EmpleadosComponent implements OnInit {
       // 3) OK UI
       this.loadEmpleados();
       this.cancelForm();
-      
+
     } catch (err: any) {
       this.loading = false;
-      
+
       if (err?.status === 409) {
         const field = (err.error?.field || '').toString().toLowerCase();
         const msg = (err.error?.error || '').toLowerCase();
@@ -467,7 +535,7 @@ export class EmpleadosComponent implements OnInit {
   }
 
   canCreateEdit(): boolean { return this.hasRole('rrhh', this.userInfo); }
-  canDelete(): boolean     { return this.hasRole('rrhh', this.userInfo); }
+  canDelete(): boolean { return this.hasRole('rrhh', this.userInfo); }
 
   //  Métodos CRUD de Empleados
   deactivateEmpleado(emp: any) {

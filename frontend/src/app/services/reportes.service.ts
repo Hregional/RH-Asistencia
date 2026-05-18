@@ -75,4 +75,14 @@ export class ReportesService {
       .set('hasta', hasta);
     return this.http.get<any>(`${API}/horarios`, { params });
   }
+
+  getReportePermisos(params: { desde: string; hasta: string; area_id?: number | string | null; empleado_id?: number | null; estado?: string }) {
+    let httpParams = new HttpParams()
+      .set('desde', params.desde)
+      .set('hasta', params.hasta);
+    if (params.area_id) httpParams = httpParams.set('area_id', params.area_id.toString());
+    if (params.empleado_id) httpParams = httpParams.set('empleado_id', params.empleado_id.toString());
+    if (params.estado && params.estado !== 'todos') httpParams = httpParams.set('estado', params.estado);
+    return this.http.get<any>(`${environment.apiBase}/permisos/reporte`, { params: httpParams });
+  }
 }

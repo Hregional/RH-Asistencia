@@ -16,30 +16,43 @@
     <h3>{{ isEditing ? 'Editar Turno' : 'Nuevo Turno' }}</h3>
 
     <form [formGroup]="turnoForm" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label>Nombre del Turno *</label>
-        <input type="text" formControlName="nombre_turno" placeholder="Ej. Matutino">
-      </div>
-
-      <div class="form-group">
-        <label>Tipo de Turno *</label>
-        <select formControlName="tipo">
-          <option value="ROTATIVO">ROTATIVO</option>
-          <option value="FIJO">FIJO</option>
-        </select>
+      <div class="row">
+        <div class="col-6">
+          <div class="form-group">
+            <label>Nombre del Turno *</label>
+            <input type="text" formControlName="nombre_turno" placeholder="Ej. Matutino">
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-group">
+            <label>Tipo de Turno *</label>
+            <select formControlName="tipo">
+              <option value="ROTATIVO">ROTATIVO</option>
+              <option value="FIJO">FIJO</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div class="row">
         <div class="col-6">
           <div class="form-group">
             <label>Hora Inicio *</label>
-            <input type="time" formControlName="hora_inicio">
+            <div class="timepicker-wrapper">
+              <input [ngxTimepicker]="pickerInicio" formControlName="hora_inicio" [format]="24" placeholder="00:00" readonly>
+              <ngx-material-timepicker #pickerInicio [cancelBtnTmpl]="cancelBtn" [confirmBtnTmpl]="confirmBtn"></ngx-material-timepicker>
+              <i class="clock-icon" (click)="pickerInicio.open()"></i>
+            </div>
           </div>
         </div>
         <div class="col-6">
           <div class="form-group">
             <label>Hora Fin *</label>
-            <input type="time" formControlName="hora_fin">
+            <div class="timepicker-wrapper">
+              <input [ngxTimepicker]="pickerFin" formControlName="hora_fin" [format]="24" placeholder="00:00" readonly>
+              <ngx-material-timepicker #pickerFin [cancelBtnTmpl]="cancelBtn" [confirmBtnTmpl]="confirmBtn"></ngx-material-timepicker>
+              <i class="clock-icon" (click)="pickerFin.open()"></i>
+            </div>
           </div>
         </div>
       </div>
@@ -67,6 +80,12 @@
           Cancelar
         </button>
       </div>
+      <ng-template #cancelBtn>
+        <button class="btn btn-secondary" type="button" style="margin-right: 10px; padding: 5px 10px; font-size: 0.9rem;">Cancelar</button>
+      </ng-template>
+      <ng-template #confirmBtn>
+        <button class="btn btn-primary" type="button" style="padding: 5px 10px; font-size: 0.9rem;">Aceptar</button>
+      </ng-template>
     </form>
   </div>
 
