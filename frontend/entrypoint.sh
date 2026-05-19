@@ -14,11 +14,15 @@ grep -r "__KEYCLOAK_URL__" $ROOT_DIR || echo "Placeholder __KEYCLOAK_URL__ not f
 
 
 # Leer las variables de entorno o usar valores por defecto
+# Si API_BASE es "AUTO", intentaremos detectarla dinámicamente en el cliente (aunque en prod es mejor fija)
+# O mejor, modificamos el script para que si no se provee, se use el placeholder para reemplazo manual posterior
 export API_BASE=${API_BASE:-__API_BASE__}
 export KEYCLOAK_URL=${KEYCLOAK_URL:-__KEYCLOAK_URL__}
 export KEYCLOAK_REALM=${KEYCLOAK_REALM:-__KEYCLOAK_REALM__}
 export KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID:-__KEYCLOAK_CLIENT_ID__}
 
+# Mejora: Si API_BASE contiene la palabra "localhost" pero estamos accediendo por IP, 
+# podrías tener problemas. Aquí permitimos que el usuario pase la IP real.
 echo "\nReplacing environment variables..."
 echo "API_BASE: $API_BASE"
 echo "KEYCLOAK_URL: $KEYCLOAK_URL"

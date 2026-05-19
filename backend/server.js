@@ -59,7 +59,9 @@ app.use((req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`\n🚀 Servidor backend listo!`);
+  console.log(`🏠 Local:            http://localhost:${PORT}`);
+  console.log(`🌐 Red (vía IP):     http://0.0.0.0:${PORT}`);
   console.log('[KC cfg]', {
     KEYCLOAK_URL: process.env.KEYCLOAK_URL,
     KEYCLOAK_REALM: process.env.KEYCLOAK_REALM,
