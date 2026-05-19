@@ -80,9 +80,13 @@
               </button>
               <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
             </ng-container>
-            <!-- Imprimir: solo si AUTORIZADO, sin importar si finalizó -->
-            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
+            <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
+            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)"
+              class="btn btn-secondary btn-small"
               (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
+            <button *ngIf="permiso.estado === 'AUTORIZADO'"
+              class="btn btn-secondary btn-small"
+              (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
