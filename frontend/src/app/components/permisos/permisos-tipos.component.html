@@ -1,0 +1,55 @@
+<div class="form-container">
+    <div class="form-header">
+        <h3>{{ editingTipoPermiso ? 'Editar' : 'Registrar' }} Tipo de Permiso</h3>
+        <button class="btn btn-secondary btn-small" (click)="volver.emit()">← Volver</button>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Nombre</label>
+            <input type="text" [(ngModel)]="tipoPermisoForm.nombre" maxlength="30" />
+        </div>
+        <div class="form-group form-group-small">
+            <label>Días</label>
+            <input type="number" [(ngModel)]="tipoPermisoForm.dias_permitidos" min="1" max="365" />
+        </div>
+        <div class="form-group">
+            <label>Motivo del Permiso</label>
+            <textarea [(ngModel)]="tipoPermisoForm.mensaje_carta" maxlength="180" required
+                style="min-height:38px;"></textarea>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button class="btn btn-primary" (click)="guardar.emit()" [disabled]="loading">{{ editingTipoPermiso ?
+            'Actualizar' : 'Guardar' }}</button>
+        <button class="btn btn-secondary" (click)="cancelar.emit()" *ngIf="editingTipoPermiso">Cancelar edición</button>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="permisos-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Días</th>
+                <th>Mensaje</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let tipo of tiposPermiso">
+                <td>{{ tipo.nombre }}</td>
+                <td>{{ tipo.dias_permitidos }}</td>
+                <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
+                <td class="action-buttons">
+                    <button class="btn btn-primary btn-small" (click)="editar.emit(tipo)">Editar</button>
+                    <button class="btn btn-danger btn-small" (click)="eliminar.emit(tipo)">Eliminar</button>
+                </td>
+            </tr>
+            <tr *ngIf="tiposPermiso.length === 0">
+                <td colspan="4" class="no-data">No hay tipos de permiso registrados</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -36,70 +36,6 @@
 }
 
 /* ─── BOTONES ─── */
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-primary {
-  background: #007bff;
-  color: #fff;
-
-  &:hover:not(:disabled) {
-    background: #0056b3;
-  }
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: #fff;
-
-  &:hover:not(:disabled) {
-    background: #545b62;
-  }
-}
-
-.btn-success {
-  background: #28a745;
-  color: #fff;
-
-  &:hover:not(:disabled) {
-    background: #218838;
-  }
-}
-
-.btn-warning {
-  background: #ffc107;
-  color: #212529;
-
-  &:hover:not(:disabled) {
-    background: #e0a800;
-  }
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: #fff;
-
-  &:hover:not(:disabled) {
-    background: #c82333;
-  }
-}
-
-.btn-small {
-  padding: 5px 10px;
-  font-size: 12px;
-}
-
 .btn-filter {
   padding: 8px 16px;
   background: #f8f9fa;
@@ -276,16 +212,32 @@
   color: #555;
   transition: background 0.15s, color 0.15s;
 
-  &.activo, &:hover {
+  &.activo,
+  &:hover {
     background: #6c757d;
     color: #fff;
     border-color: #6c757d;
   }
 }
 
-.filtro-pendiente.activo  { background: #856404; border-color: #856404; color: #fff; }
-.filtro-autorizado.activo { background: #155724; border-color: #155724; color: #fff; }
-.filtro-rechazado.activo  { background: #721c24; border-color: #721c24; color: #fff; }
+.filtro-pendiente.activo {
+  background: #856404;
+  border-color: #856404;
+  color: #fff;
+}
+
+.filtro-autorizado.activo {
+  background: #155724;
+  border-color: #155724;
+  color: #fff;
+}
+
+.filtro-rechazado.activo {
+  background: #721c24;
+  border-color: #721c24;
+  color: #fff;
+}
+
 .obs-icon {
   font-size: 13px;
   margin-left: 4px;
@@ -297,7 +249,7 @@
 .aviso-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,7 +262,7 @@
   padding: 28px 32px;
   max-width: 380px;
   text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 
   p {
     font-size: 15px;
@@ -352,6 +304,10 @@
 .pagination-info {
   font-size: 0.9rem;
   color: #666;
+}
+
+.print-area {
+  display: none;
 }
 
 /* ─── SIN DATOS ─── */
@@ -511,7 +467,7 @@
   justify-content: space-between;
 }
 
-.carta-copia-bloque + .carta-copia-bloque {
+.carta-copia-bloque+.carta-copia-bloque {
   margin-top: 20px;
 }
 
@@ -734,7 +690,7 @@
     print-color-adjust: exact !important;
   }
 
-  /* Ocultar todo excepto la carta */
+  .no-print,
   .filters-bar,
   .table-container,
   .form-header,
@@ -747,6 +703,10 @@
   .selected-info,
   .warn-dias {
     display: none !important;
+  }
+
+  .print-area {
+    display: block !important;
   }
 
   .container {

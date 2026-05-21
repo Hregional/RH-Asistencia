@@ -1,15 +1,10 @@
 <mat-sidenav-container class="main-container">
-  <mat-sidenav
-    #drawer
-    [mode]="isMobile ? 'over' : 'side'"
-    [opened]="!isMobile"
-    class="sidebar-container"
-  >
+  <mat-sidenav #drawer [mode]="isMobile ? 'over' : 'side'" [opened]="!isMobile" class="sidebar-container">
     <app-sidebar></app-sidebar>
   </mat-sidenav>
 
   <mat-sidenav-content>
-    <mat-toolbar color="primary" class="toolbar">
+    <mat-toolbar color="primary" class="toolbar app-toolbar">
       <button mat-icon-button (click)="drawer.toggle()" *ngIf="isMobile">
         <mat-icon>menu</mat-icon>
       </button>

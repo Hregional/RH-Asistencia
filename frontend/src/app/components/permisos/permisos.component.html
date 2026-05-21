@@ -1,482 +1,54 @@
 <div class="container">
-
-  <!-- ═══ BARRA DE ACCIONES ═══ -->
-  <div class="filters-bar">
-    <button class="btn btn-primary" (click)="irASolicitud()" [disabled]="loading">
-      + Solicitar Permiso
-    </button>
-    <button class="btn btn-secondary" (click)="irATiposPermiso()" [disabled]="loading">
-      Registrar Tipo de Permiso
-    </button>
-
-    <ng-container *ngIf="vistaActual === 'tabla'">
-      <div class="search-box">
-        <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar por nombre" [disabled]="loading" />
-        <button *ngIf="searchTerm" class="btn btn-secondary btn-small" (click)="searchTerm = ''">Limpiar</button>
-      </div>
-
-      <!-- Filtros de estado -->
-      <div class="filtro-estado-group">
-        <button class="btn-filtro-estado" [class.activo]="filtroEstado === 'TODOS'"
-          (click)="filtroEstado = 'TODOS'; updatePagination()">Todos</button>
-        <button class="btn-filtro-estado filtro-pendiente" [class.activo]="filtroEstado === 'PENDIENTE'"
-          (click)="filtroEstado = 'PENDIENTE'; updatePagination()">Pendiente</button>
-        <button class="btn-filtro-estado filtro-autorizado" [class.activo]="filtroEstado === 'AUTORIZADO'"
-          (click)="filtroEstado = 'AUTORIZADO'; updatePagination()">Autorizado</button>
-        <button class="btn-filtro-estado filtro-rechazado" [class.activo]="filtroEstado === 'RECHAZADO'"
-          (click)="filtroEstado = 'RECHAZADO'; updatePagination()">Rechazado</button>
-      </div>
-    </ng-container>
-  </div>
-
-  <!-- Alerta de error -->
-  <div class="alert alert-error" *ngIf="error">
-    {{ error }} <button (click)="error = null">&times;</button>
-  </div>
-
-  <div class="loading" *ngIf="loading && vistaActual === 'tabla'">Cargando...</div>
-
-  <!-- ═══ TABLA PRINCIPAL — solo empleados en permiso vigente ═══ -->
-  <div class="table-container" *ngIf="!loading && vistaActual === 'tabla'">
-    <table class="permisos-table">
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Rol</th>
-          <th>Área</th>
-          <th>Tipo de Permiso</th>
-          <th>Fecha de Inicio</th>
-          <th>Fecha de Finalización</th>
-          <th>Días Hábiles</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let permiso of paginatedPermisos">
-          <td>{{ permiso.nombre_completo }}</td>
-          <td>{{ permiso.rol_nombre || '—' }}</td>
-          <td>{{ permiso.area_nombre || '—' }}</td>
-          <td>{{ permiso.tipo_permiso_nombre || permiso.tipo_permiso_otro || '—' }}</td>
-          <td>{{ permiso.fecha_inicio | date:'dd/MM/yyyy' }}</td>
-          <td>{{ permiso.fecha_fin | date:'dd/MM/yyyy' }}</td>
-          <td>{{ permiso.dias_solicitados }}</td>
-          <td>
-            <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado, permiso)"
-              [title]="permiso.observaciones || ''">
-              {{ permiso.estado === 'AUTORIZADO' && yaFinalizo(permiso) ? 'Finalizado' : permiso.estado }}
-            </span>
-            <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
-          </td>
-          <td class="action-buttons">
-            <ng-container *ngIf="!yaFinalizo(permiso)">
-              <button *ngIf="permiso.estado !== 'AUTORIZADO'"
-                class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')">
-                Autorizar
-              </button>
-              <button *ngIf="permiso.estado === 'AUTORIZADO'"
-                class="btn btn-danger btn-small" (click)="cambiarEstado(permiso, 'RECHAZADO')">
-                Rechazar
-              </button>
-              <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
-            </ng-container>
-            <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
-            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)"
-              class="btn btn-secondary btn-small"
-              (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
-            <button *ngIf="permiso.estado === 'AUTORIZADO'"
-              class="btn btn-secondary btn-small"
-              (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
-          </td>
-        </tr>
-        <tr *ngIf="filteredPermisos.length === 0">
-          <td colspan="9" class="no-data">
-            {{ searchTerm ? 'No se encontraron coincidencias' : filtroEstado !== 'TODOS' ? 'No hay permisos con estado ' + filtroEstado : 'No hay permisos registrados' }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- Paginación -->
-    <div class="pagination-controls" *ngIf="filteredPermisos.length > itemsPerPage">
-      <button class="btn btn-secondary btn-small" (click)="prevPage()" [disabled]="currentPage === 1">Anterior</button>
-      <span class="pagination-info">Página {{ currentPage }} de {{ totalPages }}</span>
-      <button class="btn btn-secondary btn-small" (click)="nextPage()" [disabled]="currentPage === totalPages">Siguiente</button>
-    </div>
-  </div>
-
-  <!-- ═══ SOLICITAR PERMISO ═══ -->
-  <div class="form-container" *ngIf="vistaActual === 'solicitud'">
-    <div class="form-header">
-      <h3>Solicitud de Permiso</h3>
-      <button class="btn btn-secondary btn-small" (click)="volverATabla()">← Volver</button>
+    <div class="alert alert-error" *ngIf="error">
+        {{ error }} <button (click)="error = null">&times;</button>
     </div>
 
-    <!-- Empleado + Tipo de permiso en la misma fila -->
-    <div class="form-row">
-      <div class="form-group">
-        <label>Empleado</label>
-        <div class="autocomplete-wrapper">
-          <input type="text" [(ngModel)]="empleadoBusqueda" (input)="onEmpleadoBusqueda()"
-            placeholder="Buscar por nombre" autocomplete="off" maxlength="100" />
-          <div class="autocomplete-list" *ngIf="empleadosFiltrados.length > 0">
-            <div class="autocomplete-item" *ngFor="let emp of empleadosFiltrados" (click)="seleccionarEmpleado(emp)">
-              {{ emp.numero_empleado }} - {{ emp.nombre_completo }}
-            </div>
-          </div>
+    <div class="loading" *ngIf="loading && vistaActual === 'tabla'">Cargando...</div>
+
+    <app-permisos-list *ngIf="vistaActual === 'tabla' && !loading" class="no-print" [loading]="loading"
+        [searchTerm]="searchTerm" [filtroEstado]="filtroEstado" [paginatedPermisos]="paginatedPermisos"
+        [filteredPermisos]="filteredPermisos" [currentPage]="currentPage" [totalPages]="totalPages"
+        [itemsPerPage]="itemsPerPage" [popupObservaciones]="popupObservaciones"
+        (searchTermChange)="searchTerm = $event; currentPage = 1; updatePagination()"
+        (filtroEstadoChange)="filtroEstado = $event; currentPage = 1; updatePagination()"
+        (solicitarPermiso)="irASolicitud()" (registrarTipoPermiso)="irATiposPermiso()"
+        (editarPermiso)="irAEditarPermiso($event)" (autorizarPermiso)="cambiarEstado($event, 'AUTORIZADO')"
+        (rechazarPermiso)="cambiarEstado($event, 'RECHAZADO')" (imprimirPermiso)="imprimirPermisoDirecto($event)"
+        (mostrarObservaciones)="mostrarObservaciones($event.event, $event.permiso)" (cerrarPopup)="cerrarPopup()"
+        (prevPage)="prevPage()" (nextPage)="nextPage()">
+    </app-permisos-list>
+
+    <app-permisos-form *ngIf="vistaActual === 'solicitud'" class="no-print" [mode]="'solicitud'"
+        [tiposPermiso]="tiposPermiso" [solicitudForm]="solicitudForm" [empleadoBusqueda]="empleadoBusqueda"
+        [empleadosFiltrados]="empleadosFiltrados" [empleadoSeleccionado]="empleadoSeleccionado" [loading]="loading"
+        [diasExcedidos]="diasExcedidos" [esDiaUnico]="esDiaUnico" [hoy]="hoy" [cartaData]="cartaData"
+        (empleadoBusquedaChange)="empleadoBusqueda = $event" (buscarEmpleado)="onEmpleadoBusqueda()"
+        (seleccionarEmpleado)="seleccionarEmpleado($event)" (tipoPermisoChange)="onTipoPermisoChange()"
+        (calcularDias)="calcularDias()" (guardarSolicitud)="guardarSolicitud()" (volver)="volverATabla()">
+    </app-permisos-form>
+
+    <app-permisos-form *ngIf="vistaActual === 'editarPermiso' && editingPermiso" class="no-print" [mode]="'editar'"
+        [tiposPermiso]="tiposPermiso" [solicitudForm]="solicitudForm" [empleadoSeleccionado]="empleadoSeleccionado"
+        [loading]="loading" [diasExcedidos]="diasExcedidos" [esDiaUnico]="esDiaUnico" [hoy]="hoy"
+        [cartaData]="cartaData" [editingPermiso]="editingPermiso" (tipoPermisoChange)="onTipoPermisoChange()"
+        (calcularDias)="calcularDias()" (actualizarPermiso)="actualizarPermiso()"
+        (estadoChange)="cambiarEstadoEnEdicion($event)" (volver)="volverATabla()">
+    </app-permisos-form>
+
+    <app-permisos-tipos *ngIf="vistaActual === 'tiposPermiso'" class="no-print" [tiposPermiso]="tiposPermiso"
+        [tipoPermisoForm]="tipoPermisoForm" [editingTipoPermiso]="editingTipoPermiso" [loading]="loading"
+        (guardar)="guardarTipoPermiso()" (editar)="editarTipoPermiso($event)" (eliminar)="eliminarTipoPermiso($event)"
+        (cancelar)="cancelarEdicionTipo()" (volver)="volverATabla()">
+    </app-permisos-tipos>
+
+    <div class="print-area" *ngIf="imprimiendoDesdeTabla">
+        <app-permiso-carta [cartaData]="cartaData"></app-permiso-carta>
+    </div>
+
+    <div *ngIf="avisoModal" class="aviso-modal-overlay" (click)="avisoModal = null">
+        <div class="aviso-modal" (click)="$event.stopPropagation()">
+            <p>{{ avisoModal }}</p>
+            <button class="btn btn-primary" (click)="avisoModal = null">Aceptar</button>
         </div>
-        <small *ngIf="empleadoSeleccionado" class="selected-info">
-          ✓ {{ empleadoSeleccionado.nombre_completo }}
-        </small>
-      </div>
-
-      <div class="form-group">
-        <label>Tipo de Permiso</label>
-        <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="onTipoPermisoChange()">
-          <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
-          <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">
-            {{ tipo.nombre }} ({{ tipo.dias_permitidos }} días)
-          </option>
-          <option [ngValue]="-1">Personalizado</option>
-        </select>
-      </div>
     </div>
-
-    <!-- Campos personalizados — NO se guardan en tipos de permiso -->
-    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre del Permiso *</label>
-          <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" (input)="actualizarCarta()" maxlength="30"
-            required />
-        </div>
-        <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="180"
-            required></textarea>
-        </div>
-      </div>
-    </ng-container>
-
-    <!-- Fechas con calendarios -->
-    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined">
-      <div class="form-row">
-        <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
-          <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
-            [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
-        </div>
-        <div class="form-group" *ngIf="!esDiaUnico">
-          <label>Fecha de Fin</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-            [min]="solicitudForm.fecha_inicio || hoy" />
-        </div>
-        <div class="form-group form-group-small">
-          <label>Días hábiles</label>
-          <input type="number" [value]="solicitudForm.dias_solicitados" readonly style="background:#e9ecef;"
-            [class.dias-cero]="!solicitudForm.dias_solicitados" [class.dias-excedidos]="diasExcedidos" />
-          <small *ngIf="solicitudForm.fecha_inicio && solicitudForm.fecha_fin && !solicitudForm.dias_solicitados"
-            class="warn-dias">El rango no contiene días hábiles</small>
-          <small *ngIf="diasExcedidos" class="warn-dias">
-            Excede el límite permitido del tipo de permiso
-          </small>
-        </div>
-      </div>
-    </ng-container>
-
-    <!-- Carta preview -->
-    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined">
-      <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
-    </ng-container>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" (click)="guardarSolicitud()" [disabled]="loading">Guardar Solicitud</button>
-      <button class="btn btn-secondary" (click)="volverATabla()">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- ═══ EDITAR PERMISO ═══ -->
-  <div class="form-container" *ngIf="vistaActual === 'editarPermiso' && editingPermiso">
-    <div class="form-header">
-      <h3>Editar Permiso</h3>
-      <button class="btn btn-secondary btn-small" (click)="volverATabla()">← Volver</button>
-    </div>
-
-    <div class="form-group">
-      <label>Empleado</label>
-      <input type="text" [value]="editingPermiso.nombre_completo" readonly style="background:#e9ecef;" />
-    </div>
-
-    <!-- Tipo de permiso -->
-    <div class="form-group">
-      <label>Tipo de Permiso</label>
-      <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="onTipoPermisoChange()">
-        <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
-        <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">
-          {{ tipo.nombre }} ({{ tipo.dias_permitidos }} días)
-        </option>
-        <option [ngValue]="-1">Personalizado</option>
-      </select>
-    </div>
-
-    <!-- Personalizado: nombre y mensaje en la misma fila -->
-    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre del Permiso</label>
-          <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" (input)="actualizarCarta()" maxlength="100"
-            required>
-        </div>
-        <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="180" required
-            style="min-height:38px;"></textarea>
-        </div>
-      </div>
-    </ng-container>
-
-    <!-- Calendarios para controlar días hábiles -->
-    <div class="form-row">
-      <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
-        <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
-          [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
-      </div>
-      <div class="form-group" *ngIf="!esDiaUnico">
-        <label>Fecha de Fin</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-          [min]="solicitudForm.fecha_inicio || hoy" />
-      </div>
-      <div class="form-group form-group-small">
-        <label>Días hábiles</label>
-        <input type="number" [value]="solicitudForm.dias_solicitados" readonly style="background:#e9ecef;"
-          [class.dias-cero]="!solicitudForm.dias_solicitados" [class.dias-excedidos]="diasExcedidos" />
-        <small *ngIf="solicitudForm.fecha_inicio && solicitudForm.fecha_fin && !solicitudForm.dias_solicitados"
-          class="warn-dias">El rango no contiene días hábiles</small>
-        <small *ngIf="diasExcedidos" class="warn-dias">Excede el límite permitido del tipo de permiso</small>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Estado</label>
-      <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="cambiarEstadoEnEdicion($event)">
-        <option value="PENDIENTE">Pendiente</option>
-        <option value="AUTORIZADO">Autorizado</option>
-        <option value="RECHAZADO">Rechazado</option>
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label>Observaciones</label>
-      <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
-        maxlength="75"></textarea>
-    </div>
-
-    <!-- Vista previa carta en edición -->
-    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.fecha_inicio">
-      <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
-    </ng-container>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" (click)="actualizarPermiso()" [disabled]="loading">Actualizar</button>
-      <button class="btn btn-secondary" (click)="volverATabla()">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- ═══ TIPOS DE PERMISO CRUD ═══ -->
-  <div *ngIf="vistaActual === 'tiposPermiso'">
-    <div class="form-container">
-      <div class="form-header">
-        <h3>{{ editingTipoPermiso ? 'Editar' : 'Registrar' }} Tipo de Permiso</h3>
-        <button class="btn btn-secondary btn-small" (click)="volverATabla()">← Volver</button>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre</label>
-          <input type="text" [(ngModel)]="tipoPermisoForm.nombre" maxlength="30" />
-        </div>
-        <div class="form-group form-group-small">
-          <label>Días</label>
-          <input type="number" [(ngModel)]="tipoPermisoForm.dias_permitidos" min="1" max="365" />
-        </div>
-        <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="tipoPermisoForm.mensaje_carta" maxlength="180" required
-            style="min-height:38px;"></textarea>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button class="btn btn-primary" (click)="guardarTipoPermiso()" [disabled]="loading">
-          {{ editingTipoPermiso ? 'Actualizar' : 'Guardar' }}
-        </button>
-        <button class="btn btn-secondary" (click)="cancelarEdicionTipo()" *ngIf="editingTipoPermiso">
-          Cancelar edición
-        </button>
-      </div>
-    </div>
-
-    <div class="table-container">
-      <table class="permisos-table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Días</th>
-            <th>Mensaje</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let tipo of tiposPermiso">
-            <td>{{ tipo.nombre }}</td>
-            <td>{{ tipo.dias_permitidos }}</td>
-            <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
-            <td class="action-buttons">
-              <button class="btn btn-primary btn-small" (click)="editarTipoPermiso(tipo)">Editar</button>
-              <button class="btn btn-danger btn-small" (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
-            </td>
-          </tr>
-          <tr *ngIf="tiposPermiso.length === 0">
-            <td colspan="4" class="no-data">No hay tipos de permiso registrados</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
 </div>
-
-<!-- ═══ CARTA HRO — una hoja, dos copias ═══ -->
-
-<!-- Overlay para cerrar popup -->
-<div *ngIf="popupObservaciones" class="obs-overlay" (click)="cerrarPopup()"></div>
-
-<!-- Modal de aviso -->
-<div *ngIf="avisoModal" class="aviso-modal-overlay" (click)="avisoModal = null">
-  <div class="aviso-modal" (click)="$event.stopPropagation()">
-    <p>{{ avisoModal }}</p>
-    <button class="btn btn-primary" (click)="avisoModal = null">Aceptar</button>
-  </div>
-</div>
-
-<!-- Popup de observaciones -->
-<div *ngIf="popupObservaciones" class="obs-popup" [style.top.px]="popupObservaciones.y + 10"
-  [style.left.px]="popupObservaciones.x - 160">
-  <button class="obs-popup-close" (click)="cerrarPopup()">×</button>
-  <div class="obs-popup-body">
-    <strong>{{ getTextoObservaciones(popupObservaciones.permiso) }}</strong>
-  </div>
-</div>
-<!-- Contenedor oculto para impresión directa desde tabla -->
-<div style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;" *ngIf="imprimiendoDesdeTabla">
-  <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
-</div>
-
-<ng-template #cartaTemplate>
-  <div class="carta-hoja">
-
-    <!-- ── COPIA 1 ── -->
-    <div class="carta-copia-bloque">
-      <ng-container *ngTemplateOutlet="cartaCuerpo"></ng-container>
-    </div>
-
-    <!-- ── COPIA 2 ── -->
-    <div class="carta-copia-bloque">
-      <ng-container *ngTemplateOutlet="cartaCuerpo"></ng-container>
-    </div>
-
-  </div>
-</ng-template>
-
-<!-- Cuerpo reutilizable -->
-<ng-template #cartaCuerpo>
-  <div class="carta-hro-header">
-    <div class="carta-hro-logo-left">
-      <div class="logo-escudo">⚕</div>
-      <div class="carta-hro-inst">
-        <strong>Ministerio de Salud Pública y Asistencia Social</strong><br>
-        <strong> Hospital Regional de Occidente, Quetzaltenango</strong>
-      </div>
-    </div>
-    <div class="carta-hro-logo-right">
-      <span class="hro-text">HRO</span>
-    </div>
-  </div>
-
-  <div class="carta-hro-fecha-line">
-    QUETZALTENANGO
-    <span class="fecha-campo">{{ cartaData.dia }}</span> DE
-    <span class="fecha-campo fecha-mes">{{ cartaData.mes }}</span>
-    DE
-    <span class="fecha-campo">{{ cartaData.anio }}</span>
-  </div>
-
-  <div class="carta-meta-impresion">
-    <span *ngIf="cartaData.autorizadoPor || cartaData.creadoPor || cartaData.autorizadoEn">
-      Generado por: <strong>{{ cartaData.autorizadoPor || cartaData.creadoPor || '—' }}</strong>
-      <ng-container *ngIf="cartaData.autorizadoEn"> — {{ cartaData.autorizadoEn }}</ng-container>
-    </span>
-    <span>Impreso: {{ cartaData.fechaHoraImpresion }}</span>
-  </div>
-
-  <div class="carta-hro-destinatario">
-    Señor Director:<br>
-    <strong>Hospital Regional de Occidente</strong><br>
-    Su Despacho
-  </div>
-
-  <div class="carta-hro-body">
-    <p class="carta-solicitud-line">
-      Atentamente me dirijo a usted, Yo. <strong>{{ cartaData.nombreEmpleado | uppercase }}</strong>,
-      para solicitarle se sirva autorizarme:
-      <span class="carta-underline dias-autorizacion">
-        <strong>{{ cartaData.diasEnLetras }} ({{ cartaData.diasSolicitados }}) DÍAS HÁBILES</strong>
-      </span>
-    </p>
-    <p class="carta-tipo-permiso">
-      <span class="carta-underline"><strong>PERMISO POR {{ cartaData.tipoPermiso | uppercase }}</strong></span>
-    </p>
-    <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
-    <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
-      No incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
-    </p>
-    <p *ngIf="cartaData.finesDeSemanaCont > 0" class="carta-feriados">
-      No incluye {{ cartaData.finesDeSemanaCont }} día(s) de fin de semana
-    </p>
-    <div class="carta-fechas-row">
-      <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
-        Fecha: <span class="fecha-campo">{{ cartaData.fechaInicio }}</span>
-      </span>
-      <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
-        <span>Del <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al <span class="fecha-campo">{{ cartaData.fechaFin }}</span></span>
-      </ng-container>
-    </div>
-    <p class="carta-sujeto">
-      <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
-    </p>
-    <p class="carta-atentamente">Atentamente,</p>
-  </div>
-
-  <div class="carta-hro-firmas">
-    <div class="firma-bloque">
-      <div class="firma-linea"></div>
-      <strong>{{ cartaData.nombreEmpleado | uppercase }}</strong>
-      <span class="firma-label">{{ cartaData.rol | uppercase }}</span>
-    </div>
-    <div class="firma-bloque">
-      <div class="firma-linea"></div>
-      <span class="firma-label">JEFE DE DEPARTAMENTO</span>
-    </div>
-    <div class="firma-bloque">
-      <div class="firma-linea"></div>
-      <span class="firma-label">JEFE DE PERSONAL</span>
-    </div>
-    <div class="firma-bloque">
-      <div class="firma-linea"></div>
-      <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
-      <span class="firma-sub">Y/O SUBDIRECCIÓN</span>
-    </div>
-  </div>
-</ng-template>
