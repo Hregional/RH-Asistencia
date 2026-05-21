@@ -27,6 +27,15 @@ class TiposPermisoModel {
     return rows.length ? rows[0] : null;
   }
 
+  static async existeNombre(nombre, excludeId = null) {
+    const sql = excludeId
+      ? `SELECT id FROM tipos_permiso WHERE LOWER(nombre) = LOWER(?) AND id != ? AND activo = 1`
+      : `SELECT id FROM tipos_permiso WHERE LOWER(nombre) = LOWER(?) AND activo = 1`;
+    const params = excludeId ? [nombre, excludeId] : [nombre];
+    const [rows] = await db.query(sql, params);
+    return rows.length > 0;
+  }
+
   static async create({ nombre, dias_permitidos, mensaje_carta }) {
     const [result] = await db.query(`
       INSERT INTO tipos_permiso (nombre, dias_permitidos, mensaje_carta)
@@ -92,6 +101,7 @@ class PermisosModel {
         p.creado_en,
         p.actualizado_en,
         p.autorizado_en,
+        p.firmas_config,
         uc.username AS creado_por_usuario,
         ua.username AS autorizado_por_usuario
       FROM permisos p
@@ -140,14 +150,15 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado = 'PENDIENTE',
-      creado_por
+      creado_por,
+      firmas_config = null
     } = data;
 
     const [result] = await db.query(`
       INSERT INTO permisos (
         empleado_id, tipo_permiso_id, tipo_permiso_otro, mensaje_otro,
-        fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por, firmas_config
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       empleado_id,
       tipo_permiso_id || null,
@@ -157,7 +168,8 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado,
-      creado_por || null
+      creado_por || null,
+      firmas_config ? JSON.stringify(firmas_config) : null
     ]);
 
     return { id: result.insertId, ...data };
@@ -172,14 +184,15 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado,
-      observaciones
+      observaciones,
+      firmas_config = null
     } = data;
 
     const [result] = await db.query(`
       UPDATE permisos
       SET tipo_permiso_id = ?, tipo_permiso_otro = ?, mensaje_otro = ?,
           fecha_inicio = ?, fecha_fin = ?, dias_solicitados = ?,
-          estado = ?, observaciones = ?
+          estado = ?, observaciones = ?, firmas_config = ?
       WHERE id = ?
     `, [
       tipo_permiso_id || null,
@@ -190,6 +203,7 @@ class PermisosModel {
       dias_solicitados,
       estado,
       observaciones || null,
+      firmas_config ? JSON.stringify(firmas_config) : null,
       id
     ]);
 
@@ -236,16 +250,24 @@ class TiposPermisoController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      // Verificar duplicado case-insensitive antes de insertar
+      if (await TiposPermisoModel.existeNombre(nombre)) {
+        return res.status(409).json({ success: false, error: 'Ya existe un tipo de permiso con ese nombre.' });
+      }
+
       const nuevo = await TiposPermisoModel.create({ nombre, dias_permitidos, mensaje_carta });
       await audit({ evento: 'CREATE', entidad: 'tipos_permiso', entidad_id: nuevo.id, antes: null, despues: nuevo, req });
 
       return res.status(201).json({ success: true, data: nuevo });
     } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ success: false, error: `Ya existe un tipo de permiso con ese nombre.` });
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async update(req, res) {
+  static async update(req, res) {                
     try {
       const { id } = req.params;
       const { nombre, dias_permitidos, mensaje_carta } = req.body;
@@ -253,11 +275,19 @@ class TiposPermisoController {
       const antes = await TiposPermisoModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Tipo de permiso no encontrado' });
 
+      // Verificar duplicado case-insensitive excluyendo el registro actual
+      if (await TiposPermisoModel.existeNombre(nombre, id)) {
+        return res.status(409).json({ success: false, error: 'Ya existe un tipo de permiso con ese nombre.' });
+      }
+
       const actualizado = await TiposPermisoModel.update(id, { nombre, dias_permitidos, mensaje_carta });
       await audit({ evento: 'UPDATE', entidad: 'tipos_permiso', entidad_id: id, antes, despues: actualizado, req });
 
       return res.json({ success: true, data: actualizado });
     } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ success: false, error: `Ya existe un tipo de permiso con ese nombre.` });
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -389,7 +419,7 @@ class PermisosController {
 // RUTAS
 // ============================================
 
-// Todos los permisos vigentes hoy (para vista de empleados)
+// Todos los permisos vigentes hoy para vista empleados
 router.get('/vigentes-hoy', requireAuth, async (req, res) => {
   try {
     const hoy = new Date().toISOString().split('T')[0];

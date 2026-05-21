@@ -62,6 +62,14 @@ export class PermisosComponent implements OnInit {
   // Permiso en edición
   editingPermiso: Permiso | null = null;
 
+  // Firmas visibles en la carta (todas activas por defecto)
+  firmas = {
+    empleado: true,
+    jefeDepto: true,
+    jefePersonal: true,
+    direccion: true
+  };
+
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
 
@@ -246,15 +254,13 @@ export class PermisosComponent implements OnInit {
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   }
 
-  // ─── BUSCADOR EMPLEADO ────────────────────────────────────────────
+  // OPTIMIZADO BUSCADOR EMPLEADO SOLO NOM
   onEmpleadoBusqueda() {
     const t = this.norm(this.empleadoBusqueda);
     if (!t) { this.empleadosFiltrados = []; return; }
-    this.empleadosFiltrados = this.empleados.filter(e =>
-      [e.nombre_completo, String(e.numero_empleado),
-      (e as any).rol_nombre || '', (e as any).area_nombre || '']
-        .some(v => this.norm(String(v)).includes(t))
-    ).slice(0, 10);
+    this.empleadosFiltrados = this.empleados
+      .filter(e => this.norm(e.nombre_completo || '').includes(t))
+      .slice(0, 10);
   }
 
   seleccionarEmpleado(emp: Empleado) {
@@ -266,6 +272,21 @@ export class PermisosComponent implements OnInit {
   }
 
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
+  private resetFirmas(permiso?: any) {
+    const cfg = permiso?.firmas_config;
+    if (cfg) {
+      const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
+      this.firmas = {
+        empleado:     parsed.empleado     ?? true,
+        jefeDepto:    parsed.jefeDepto    ?? true,
+        jefePersonal: parsed.jefePersonal ?? true,
+        direccion:    parsed.direccion    ?? true
+      };
+    } else {
+      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true };
+    }
+  }
+
   irASolicitud() {
     this.vistaActual = 'solicitud';
     this.editingPermiso = null;
@@ -275,6 +296,7 @@ export class PermisosComponent implements OnInit {
     this.solicitudForm = this.initSolicitudForm();
     this.cartaData = this.initCartaData();
     this.diasExcedidos = false;
+    this.resetFirmas();
   }
 
   /** Normaliza fecha ISO con timezone a 'YYYY-MM-DD' para inputs date */
@@ -289,6 +311,7 @@ export class PermisosComponent implements OnInit {
   irAEditarPermiso(permiso: Permiso) {
     this.editingPermiso = permiso;
     this.vistaActual = 'editarPermiso';
+    this.resetFirmas(permiso);
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
     const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
@@ -324,10 +347,11 @@ export class PermisosComponent implements OnInit {
     this.editingPermiso = null;
     this.editingTipoPermiso = null;
     this.error = null;
+    this.resetFirmas();
     this.loadPermisos();
   }
 
-  // ─── TIPO PERMISO CHANGE ──────────────────────────────────────────
+  // ─── TIPO PERMISO CUANDO SE CAMBIA EN EDITAR 
   onTipoPermisoChange() {
     // Solo limpiar campos específicos del tipo anterior, no todo
     this.solicitudForm.tipo_permiso_otro = '';
@@ -341,7 +365,7 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // ─── CÁLCULO DE DÍAS HÁBILES (calendario guatemalteco) ───────────
+  // ─── CÁLCULO DE DÍAS HÁBILES (calendario GT)
   calcularDias() {
     // Si es permiso de 1 día, forzar fecha_fin = fecha_inicio antes de validar
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
@@ -412,7 +436,13 @@ export class PermisosComponent implements OnInit {
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
       fechaHoraImpresion: '',
-      autorizadoEn: ''
+      autorizadoEn: (() => {
+        // En formulario de creación/edición, mostrar hora actual como hora de generación
+        const ahora = new Date();
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const h = ahora.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+        return `${p2(ahora.getDate())}/${p2(ahora.getMonth()+1)}/${ahora.getFullYear()} ${p2(h%12||12)}:${p2(ahora.getMinutes())} ${ampm}`;
+      })()
     };
   }
 
@@ -446,21 +476,8 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar si tiene turno asignado en ese rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea crear el permiso de todas formas?`)) return;
-        }
-        this.ejecutarGuardarSolicitud();
-      },
-      error: () => this.ejecutarGuardarSolicitud() // si falla la verificación, continuar
-    });
+    // OPTIMIZADO Guardar directamente sin verificar si tiene turno que cumplir el empleado
+    this.ejecutarGuardarSolicitud();
   }
 
   private ejecutarGuardarSolicitud() {
@@ -472,6 +489,8 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_otro = null;
       data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
 
     this.permisosSvc.createPermiso(data).subscribe({
       next: (res) => {
@@ -509,21 +528,8 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar turnos asignados en el rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea actualizar el permiso de todas formas?`)) return;
-        }
-        this.ejecutarActualizarPermiso();
-      },
-      error: () => this.ejecutarActualizarPermiso()
-    });
+    // Actualizar directamente sin verificar turnos
+    this.ejecutarActualizarPermiso();
   }
 
   private ejecutarActualizarPermiso() {
@@ -535,6 +541,9 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_otro = null;
       data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
+
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
       next: (res) => {
         this.loading = false;
@@ -547,62 +556,17 @@ export class PermisosComponent implements OnInit {
 
   // ─── ESTADO ───────────────────────────────────────────────────────
   cambiarEstadoEnEdicion(estado: 'AUTORIZADO' | 'RECHAZADO' | 'PENDIENTE') {
+    // Solo actualiza el formulario local — el backend se llama al dar "Actualizar"
     this.solicitudForm.estado = estado;
-    if (this.editingPermiso?.id) {
-      const permisoTemp = { ...this.editingPermiso, estado: this.solicitudForm.estado as any };
-      if (estado === 'AUTORIZADO') {
-        this.permisosSvc.getTurnosEnRango(permisoTemp.empleado_id, permisoTemp.fecha_inicio, permisoTemp.fecha_fin).subscribe({
-          next: (res) => {
-            if (res.tieneTurnos) {
-              const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-              if (!confirm(`⚠️ Tiene turno(s) asignado(s):\n${turnos}\n\n¿Autorizar de todas formas?`)) {
-                this.solicitudForm.estado = this.editingPermiso!.estado;
-                return;
-              }
-            }
-            this.ejecutarCambioEstado(permisoTemp, estado);
-          },
-          error: () => this.ejecutarCambioEstado(permisoTemp, estado)
-        });
-      } else {
-        this.ejecutarCambioEstado(permisoTemp, estado);
-      }
-    }
   }
 
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
-    if (estado === 'AUTORIZADO') {
-      this.permisosSvc.getTurnosEnRango(permiso.empleado_id, permiso.fecha_inicio, permiso.fecha_fin).subscribe({
-        next: (res) => {
-          if (res.tieneTurnos) {
-            const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-            if (!confirm(`⚠️ ${permiso.nombre_completo} tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea autorizar el permiso de todas formas?`)) return;
-          }
-          this.ejecutarCambioEstado(permiso, estado);
-        },
-        error: () => this.ejecutarCambioEstado(permiso, estado)
-      });
-    } else {
-      this.ejecutarCambioEstado(permiso, estado);
-    }
+    this.ejecutarCambioEstado(permiso, estado);
   }
 
   private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     this.loading = true;
     this.permisosSvc.updateEstadoPermiso(permiso.id!, estado).subscribe({
-      next: (res) => {
-        this.loading = false;
-        if (res.success) this.loadPermisos();
-        else this.error = res.error || 'Error';
-      },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
-    });
-  }
-
-  eliminarPermiso(permiso: Permiso) {
-    if (!confirm(`¿Eliminar permiso de ${permiso.nombre_completo}?`)) return;
-    this.loading = true;
-    this.permisosSvc.deletePermiso(permiso.id!).subscribe({
       next: (res) => {
         this.loading = false;
         if (res.success) this.loadPermisos();
@@ -644,9 +608,16 @@ export class PermisosComponent implements OnInit {
           this.editingTipoPermiso = null;
           this.tipoPermisoForm = this.initTipoForm();
           this.loadTiposPermiso();
-        } else this.error = res.error || 'Error';
+        } else {
+          this.error = res.error || 'Error';
+          setTimeout(() => this.error = null, 4000);
+        }
       },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
+      error: () => {
+        this.error = 'Ya existe este tipo de permiso';
+        this.loading = false;
+        setTimeout(() => this.error = null, 4000);
+      }
     });
   }
 
@@ -802,9 +773,9 @@ export class PermisosComponent implements OnInit {
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
       autorizadoEn: (() => {
-        const ae = permiso.autorizado_en;
+        // Si está autorizado usar autorizado_en, si no usar creado_en como referencia
+        const ae = permiso.autorizado_en || permiso.creado_en;
         if (!ae) return '';
-        // Asegurar que se interprete como UTC agregando Z si no la tiene
         const isoStr = String(ae).includes('Z') || String(ae).includes('+') ? String(ae) : String(ae).replace(' ', 'T') + 'Z';
         const d = new Date(isoStr);
         if (isNaN(d.getTime())) return '';
@@ -818,6 +789,10 @@ export class PermisosComponent implements OnInit {
     };
 
     this.imprimiendoDesdeTabla = true;
+
+    // Cargar firmas guardadas en BD para este permiso
+    this.resetFirmas(permiso);
+
     setTimeout(() => {
       this.imprimirCarta();
       setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1000);

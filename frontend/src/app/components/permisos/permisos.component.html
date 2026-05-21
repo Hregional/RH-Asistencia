@@ -181,6 +181,17 @@
             Excede el límite permitido del tipo de permiso
           </small>
         </div>
+
+        <!-- Firmas visibles en la carta -->
+        <div class="form-group firmas-check-group">
+          <label>Firmas en carta</label>
+          <div class="firmas-checks">
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()"> Empleado</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()"> Jefe Depto.</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal" (change)="actualizarCarta()"> Jefe Personal</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()"> Dirección</label>
+          </div>
+        </div>
       </div>
     </ng-container>
 
@@ -254,6 +265,17 @@
         <small *ngIf="solicitudForm.fecha_inicio && solicitudForm.fecha_fin && !solicitudForm.dias_solicitados"
           class="warn-dias">El rango no contiene días hábiles</small>
         <small *ngIf="diasExcedidos" class="warn-dias">Excede el límite permitido del tipo de permiso</small>
+      </div>
+
+      <!-- CHECK POR DEFAULT PARA TENER LAS 4 FIRMAS POR DEFECTO CON OPCION A QUITAR ALGUNO QUE NO VAYA A FIRMAR-->
+      <div class="form-group firmas-check-group">
+        <label>Firmas en carta</label>
+        <div class="firmas-checks">
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()"> Empleado</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()"> Jefe Depto.</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal" (change)="actualizarCarta()"> Jefe Personal</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()"> Dirección</label>
+        </div>
       </div>
     </div>
 
@@ -460,20 +482,20 @@
   </div>
 
   <div class="carta-hro-firmas">
-    <div class="firma-bloque">
+    <div class="firma-bloque" *ngIf="firmas.empleado">
       <div class="firma-linea"></div>
       <strong>{{ cartaData.nombreEmpleado | uppercase }}</strong>
       <span class="firma-label">{{ cartaData.rol | uppercase }}</span>
     </div>
-    <div class="firma-bloque">
+    <div class="firma-bloque" *ngIf="firmas.jefeDepto">
       <div class="firma-linea"></div>
       <span class="firma-label">JEFE DE DEPARTAMENTO</span>
     </div>
-    <div class="firma-bloque">
+    <div class="firma-bloque" *ngIf="firmas.jefePersonal">
       <div class="firma-linea"></div>
       <span class="firma-label">JEFE DE PERSONAL</span>
     </div>
-    <div class="firma-bloque">
+    <div class="firma-bloque" *ngIf="firmas.direccion">
       <div class="firma-linea"></div>
       <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
       <span class="firma-sub">Y/O SUBDIRECCIÓN</span>

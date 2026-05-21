@@ -258,6 +258,36 @@
   flex-wrap: wrap;
 }
 
+/* Firmas en carta — checkboxes */
+.firmas-check-group {
+  flex: 0 0 auto;
+}
+
+.firmas-checks {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.firma-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #444;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: #007bff;
+    cursor: pointer;
+  }
+}
+
 /* Filtros de estado */
 .filtro-estado-group {
   display: flex;
