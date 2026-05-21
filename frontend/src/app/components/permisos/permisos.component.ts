@@ -4,30 +4,21 @@ import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.service';
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
+import { numeroALetras } from '../../utils/number-to-words';
 import {
-  esFeriado, getNombreFeriado, parseFechaLocal,
-  calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango,
-  getPascua
+  parseFechaLocal,
+  calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango
 } from '../../utils/feriados';
-
-// ─── Número a letras (español) ───────────────────────────────────────────────
-const UNIDADES = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
-  'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-const DECENAS = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-
-export function numeroALetras(n: number): string {
-  if (n === 0) return 'CERO';
-  if (n < 20) return UNIDADES[n];
-  if (n < 30) return n === 20 ? 'VEINTE' : 'VEINTI' + UNIDADES[n - 20];
-  const dec = Math.floor(n / 10);
-  const uni = n % 10;
-  return uni === 0 ? DECENAS[dec] : DECENAS[dec] + ' Y ' + UNIDADES[uni];
-}
+import { PermisoCartaComponent } from './permiso-carta.component';
+import { PermisosFormComponent } from './permisos-form.component';
+import { PermisosListComponent } from './permisos-list.component';
+import { PermisosTiposComponent } from './permisos-tipos.component';
+import { CartaData, PermisosView, PopupObservaciones } from './permisos.types';
 
 @Component({
   selector: 'app-permisos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PermisosListComponent, PermisosFormComponent, PermisosTiposComponent, PermisoCartaComponent],
   templateUrl: './permisos.component.html',
   styleUrls: ['./permisos.component.scss']
 })
@@ -45,7 +36,7 @@ export class PermisosComponent implements OnInit {
   filtroEstado: 'TODOS' | 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO' = 'TODOS';
 
   // Vistas
-  vistaActual: 'tabla' | 'solicitud' | 'editarPermiso' | 'tiposPermiso' = 'tabla';
+  vistaActual: PermisosView = 'tabla';
 
   // Buscador empleado en solicitud
   empleadoBusqueda = '';
@@ -66,7 +57,7 @@ export class PermisosComponent implements OnInit {
   imprimiendoDesdeTabla = false;
 
   // Popup de observaciones
-  popupObservaciones: { permiso: Permiso; x: number; y: number } | null = null;
+  popupObservaciones: PopupObservaciones | null = null;
 
   // Modal de aviso simple
   avisoModal: string | null = null;
@@ -102,7 +93,7 @@ export class PermisosComponent implements OnInit {
   }
 
   // Carta preview
-  cartaData = this.initCartaData();
+  cartaData: CartaData = this.initCartaData();
 
   // Usuario logueado actual
   usuarioActual = '';
@@ -117,8 +108,8 @@ export class PermisosComponent implements OnInit {
     this.loadPermisos();
     this.loadEmpleados();
     this.loadTiposPermiso();
-    this.empleadosSvc.getRoles().subscribe(r => { if (r.success && r.data) this.roles = r.data; });
-    this.empleadosSvc.getAreas().subscribe(a => { if (a.success && a.data) this.areas = a.data; });
+    this.empleadosSvc.getRoles().subscribe((r: any) => { if (r.success && r.data) this.roles = r.data; });
+    this.empleadosSvc.getAreas().subscribe((a: any) => { if (a.success && a.data) this.areas = a.data; });
     // Obtener username del usuario logueado
     try {
       const token = this.kc.getKeycloakInstance()?.tokenParsed as any;
@@ -143,7 +134,7 @@ export class PermisosComponent implements OnInit {
     return { nombre: '', dias_permitidos: 1, mensaje_carta: '' };
   }
 
-  private initCartaData() {
+  private initCartaData(): CartaData {
     return {
       nombreEmpleado: '',
       renglon: '',
@@ -172,7 +163,7 @@ export class PermisosComponent implements OnInit {
     this.loading = true;
     // Cargar todos los permisos para gestión (vigentes, futuros y recientes)
     this.permisosSvc.getPermisos('todos').subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.permisos = res.success && res.data ? res.data : [];
         this.updatePagination();
         this.loading = false;
@@ -188,14 +179,14 @@ export class PermisosComponent implements OnInit {
           this.empleados = res.data.filter((e: Empleado) => e.activo);
         }
       },
-      error: (err) => console.error('Error cargando empleados:', err)
+      error: (err: any) => console.error('Error cargando empleados:', err)
     });
   }
 
   loadTiposPermiso() {
     this.permisosSvc.getTiposPermiso().subscribe({
-      next: (res) => { this.tiposPermiso = res.success && res.data ? res.data : []; },
-      error: (err) => console.error('Error cargando tipos:', err)
+      next: (res: any) => { this.tiposPermiso = res.success && res.data ? res.data : []; },
+      error: (err: any) => console.error('Error cargando tipos:', err)
     });
   }
 
@@ -452,7 +443,7 @@ export class PermisosComponent implements OnInit {
       this.solicitudForm.fecha_inicio!,
       this.solicitudForm.fecha_fin!
     ).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         if (res.tieneTurnos) {
           const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
           if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea crear el permiso de todas formas?`)) return;
@@ -474,7 +465,7 @@ export class PermisosComponent implements OnInit {
     }
 
     this.permisosSvc.createPermiso(data).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) { this.volverATabla(); }
         else this.error = res.error || 'Error guardando solicitud';
@@ -515,7 +506,7 @@ export class PermisosComponent implements OnInit {
       this.solicitudForm.fecha_inicio!,
       this.solicitudForm.fecha_fin!
     ).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         if (res.tieneTurnos) {
           const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
           if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea actualizar el permiso de todas formas?`)) return;
@@ -536,7 +527,7 @@ export class PermisosComponent implements OnInit {
       data.mensaje_otro = null;
     }
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) { this.volverATabla(); }
         else this.error = res.error || 'Error actualizando';
@@ -552,7 +543,7 @@ export class PermisosComponent implements OnInit {
       const permisoTemp = { ...this.editingPermiso, estado: this.solicitudForm.estado as any };
       if (estado === 'AUTORIZADO') {
         this.permisosSvc.getTurnosEnRango(permisoTemp.empleado_id, permisoTemp.fecha_inicio, permisoTemp.fecha_fin).subscribe({
-          next: (res) => {
+          next: (res: any) => {
             if (res.tieneTurnos) {
               const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
               if (!confirm(`⚠️ Tiene turno(s) asignado(s):\n${turnos}\n\n¿Autorizar de todas formas?`)) {
@@ -573,7 +564,7 @@ export class PermisosComponent implements OnInit {
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     if (estado === 'AUTORIZADO') {
       this.permisosSvc.getTurnosEnRango(permiso.empleado_id, permiso.fecha_inicio, permiso.fecha_fin).subscribe({
-        next: (res) => {
+        next: (res: any) => {
           if (res.tieneTurnos) {
             const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
             if (!confirm(`⚠️ ${permiso.nombre_completo} tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea autorizar el permiso de todas formas?`)) return;
@@ -590,7 +581,7 @@ export class PermisosComponent implements OnInit {
   private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     this.loading = true;
     this.permisosSvc.updateEstadoPermiso(permiso.id!, estado).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadPermisos();
         else this.error = res.error || 'Error';
@@ -603,7 +594,7 @@ export class PermisosComponent implements OnInit {
     if (!confirm(`¿Eliminar permiso de ${permiso.nombre_completo}?`)) return;
     this.loading = true;
     this.permisosSvc.deletePermiso(permiso.id!).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadPermisos();
         else this.error = res.error || 'Error';
@@ -638,7 +629,7 @@ export class PermisosComponent implements OnInit {
       : this.permisosSvc.createTipoPermiso(this.tipoPermisoForm);
 
     op.subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) {
           this.editingTipoPermiso = null;
@@ -654,12 +645,12 @@ export class PermisosComponent implements OnInit {
     if (!confirm(`¿Eliminar "${tipo.nombre}"?`)) return;
     this.loading = true;
     this.permisosSvc.deleteTipoPermiso(tipo.id!).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadTiposPermiso();
         else this.error = res.error || 'Error';
       },
-      error: (err) => {
+      error: (err: any) => {
         this.loading = false;
         const msg = err?.error?.error || '';
         if (err.status === 409 || msg.includes('está siendo usado')) {
@@ -673,81 +664,7 @@ export class PermisosComponent implements OnInit {
 
   // ─── IMPRIMIR ─────────────────────────────────────────────────────
   imprimirCarta() {
-    const cartaEl = document.querySelector('.carta-hoja');
-    if (!cartaEl) { window.print(); return; }
-
-    const win = window.open('', '_blank', 'width=816,height=1056');
-    if (!win) { window.print(); return; }
-
-    // Recoger todos los estilos de la página actual
-    const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map(el => el.outerHTML).join('\n');
-
-    win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  ${estilos}
-  <style>
-    @page { size: letter portrait; margin: 10mm 15mm; margin-header: 0; margin-footer: 0; }
-    head { display: none !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
-    html { background: #fff !important; }
-    .carta-hoja {
-      width: 100%; height: calc(100vh - 20mm);
-      display: flex; flex-direction: column;
-      border: none; margin: 0; max-width: 100%;
-      font-size: 10pt; line-height: 1.4; color: #111;
-    }
-    .carta-copia-bloque {
-      flex: 1 1 0; min-height: 0; padding: 5mm 0;
-      display: flex; flex-direction: column;
-      justify-content: space-between; overflow: hidden; box-sizing: border-box;
-    }
-    .carta-copia-bloque + .carta-copia-bloque { margin-top: 8mm; }
-    .carta-separador {
-      flex: 0 0 12mm; border-top: 1.5px dashed #444; border-bottom: none;
-      text-align: center; font-size: 14pt; display: flex;
-      align-items: flex-start; justify-content: center;
-      font-family: 'Segoe UI', sans-serif; color: #555; padding: 4mm 0 0;
-      margin-top: 4mm;
-    }
-    .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
-    .carta-hro-logo-left { display:flex; align-items:flex-start; gap:8px; }
-    .logo-escudo { font-size:26pt; line-height:1; }
-    .carta-hro-inst { font-size:7.5pt; line-height:1.3; }
-    .carta-hro-logo-right { text-align:right; }
-    .hro-text { font-size:28pt; font-weight:900; font-style:italic; letter-spacing:-2px; line-height:1; display:block; }
-    .hro-sub { font-size:6pt; letter-spacing:1px; text-align:center; margin-top:2px; }
-    .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
-    .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
-    .fecha-mes { min-width:80px; }
-    .carta-hro-destinatario { margin-bottom:6px; font-size:9pt; line-height:1.4; }
-    .carta-hro-body { margin-bottom:4px; flex:1; }
-    .carta-hro-body p { font-size:9pt; margin:0 0 4px; }
-    .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
-    .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
-    .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
-    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
-    .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
-    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
-    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:1px; font-size:7.5pt; }
-    .firma-linea { width:100% !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
-    .firma-label { font-weight:600; font-size:7pt; text-transform:uppercase; display:block !important; }
-    .firma-sub { font-size:6.5pt; color:#333; display:block !important; }
-    .dias-autorizacion { font-size:9pt; }
-    .carta-solicitud-line { margin-bottom:3px !important; }
-    .carta-tipo-permiso { margin-bottom:3px !important; }
-    .carta-meta-impresion { display:flex; justify-content:space-between; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
-  </style>
-</head>
-<body>${cartaEl.outerHTML}</body>
-</html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+    window.print();
   }
 
   // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
@@ -781,7 +698,7 @@ export class PermisosComponent implements OnInit {
     const horas24 = ahora.getHours();
     const ampm = horas24 >= 12 ? 'PM' : 'AM';
     const horas12 = horas24 % 12 || 12;
-    const fechaHoraImpresion = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(horas12)}:${pad(ahora.getMinutes())} ${ampm}`;
+    const fechaHoraImpresion = `${pad(ahora.getDate())}/${pad(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${pad(horas12)}:${pad(ahora.getMinutes())} ${ampm}`;
 
     this.cartaData = {
       nombreEmpleado: permiso.nombre_completo || '',
@@ -808,11 +725,11 @@ export class PermisosComponent implements OnInit {
         const isoStr = String(ae).includes('Z') || String(ae).includes('+') ? String(ae) : String(ae).replace(' ', 'T') + 'Z';
         const d = new Date(isoStr);
         if (isNaN(d.getTime())) return '';
-        const p2 = (n: number) => String(n).padStart(2,'0');
+        const p2 = (n: number) => String(n).padStart(2, '0');
         // Convertir a Guatemala UTC-6
         const gt = new Date(d.getTime() - 6 * 60 * 60 * 1000);
         const h = gt.getUTCHours(), ampm = h >= 12 ? 'PM' : 'AM';
-        return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth()+1)}/${gt.getUTCFullYear()} ${p2(h%12||12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
+        return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth() + 1)}/${gt.getUTCFullYear()} ${p2(h % 12 || 12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
       })(),
       fechaHoraImpresion
     };
