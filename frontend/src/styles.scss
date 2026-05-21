@@ -124,3 +124,87 @@ body {
   padding: 5px 10px;
   font-size: 12px;
 }
+
+/* Print: expandir contenido y ocultar navbar/sidebar para que la carta ocupe toda la hoja */
+@media print {
+
+  /* Ocultar toolbar/sidebar pero mantener el contenedor para que el contenido se expanda */
+  .app-toolbar,
+  .sidebar-container,
+  mat-sidenav {
+    display: none !important;
+  }
+
+  /* Ajustes de seguridad para impresión: dejar bordes/márgenes visibles */
+  @page {
+    size: letter portrait;
+    margin: 12mm 12mm;
+    /* margen seguro para la mayoría de impresoras */
+  }
+
+  /* Asegurar que el contenedor y el contenido ocupen todo el ancho/alto */
+  mat-sidenav-container {
+    height: 100vh !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  mat-sidenav-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .layout__content {
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Mantener la lógica de no-imprimir y mostrar la zona de carta */
+  app-permisos .no-print {
+    display: none !important;
+  }
+
+  app-permisos .print-area {
+    display: block !important;
+    padding: 6mm 6mm 6mm 12mm !important;
+    /* top right bottom left */
+    box-sizing: border-box !important;
+    /* espacio entre borde de la página y la carta */
+    position: static !important;
+    width: 100% !important;
+  }
+
+  /* Forzar que la carta use toda la hoja imprimible */
+  app-permisos .carta-hoja {
+    border: 0.5pt solid #000 !important;
+    /* borde fino y seguro */
+    padding: 6mm 8mm !important;
+    /* padding interior para contenido */
+    border-radius: 3px !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    height: calc(100vh - 30mm) !important;
+    /* deja espacio para los márgenes */
+    max-height: calc(100vh - 30mm) !important;
+    max-width: calc(100% - 12mm) !important;
+  }
+
+  /* Separador entre copias: evita que el borde se corte entre páginas */
+  .carta-copia-bloque {
+    page-break-after: always;
+    padding-top: 2mm !important;
+  }
+
+  /* Evitar recortes por overflow del body */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
