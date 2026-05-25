@@ -391,7 +391,7 @@
   </div>
 </div>
 <!-- Contenedor oculto para impresión directa desde tabla -->
-<div style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;" *ngIf="imprimiendoDesdeTabla">
+<div data-print-container style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;" *ngIf="imprimiendoDesdeTabla">
   <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
 </div>
 

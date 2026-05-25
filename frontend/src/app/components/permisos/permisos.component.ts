@@ -635,7 +635,77 @@ export class PermisosComponent implements OnInit {
 
   // ─── IMPRIMIR ─────────────────────────────────────────────────────
   imprimirCarta() {
-    window.print();
+    // Buscar la carta dentro del contenedor oculto de impresión
+    const contenedor = document.querySelector('[data-print-container]');
+    const cartaEl = contenedor
+      ? contenedor.querySelector('.carta-hoja')
+      : document.querySelector('.carta-hoja');
+
+    if (!cartaEl) { window.print(); return; }
+
+    const win = window.open('', '_blank', 'width=816,height=1056');
+    if (!win) { window.print(); return; }
+
+    const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(el => el.outerHTML).join('\n');
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  ${estilos}
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 10mm 15mm;
+      margin-top: 0mm;
+      margin-bottom: 0mm;
+    }
+    @page :first { margin-top: 0; }
+    @page :left { margin-left: 10mm; }
+    @page :right { margin-right: 10mm; }
+    head { display: none !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
+    html { background: #fff !important; }
+    .carta-hoja { width: 100%; height: 100vh; display: flex; flex-direction: column; border: none; margin: 0; max-width: 100%; font-size: 10pt; line-height: 1.4; color: #111; overflow: hidden; }
+    .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
+    .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
+    .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
+    .carta-hro-logo-left { display:flex; align-items:flex-start; gap:8px; }
+    .logo-escudo { font-size:26pt; line-height:1; }
+    .carta-hro-inst { font-size:7.5pt; line-height:1.3; }
+    .carta-hro-logo-right { text-align:right; }
+    .hro-text { font-size:28pt; font-weight:900; font-style:italic; letter-spacing:-2px; line-height:1; display:block; }
+    .hro-sub { font-size:6pt; letter-spacing:1px; text-align:center; margin-top:2px; }
+    .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
+    .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
+    .fecha-mes { min-width:80px; }
+    .carta-hro-destinatario { margin-bottom:6px; font-size:9pt; line-height:1.4; }
+    .carta-hro-body { margin-bottom:4px; flex:1; }
+    .carta-hro-body p { font-size:9pt; margin:0 0 4px; }
+    .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
+    .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
+    .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
+    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
+    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
+    .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
+    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
+    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:1px; font-size:7.5pt; }
+    .firma-linea { width:100% !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
+    .firma-label { font-weight:600; font-size:7pt; text-transform:uppercase; display:block !important; }
+    .firma-sub { font-size:6.5pt; color:#333; display:block !important; }
+    .dias-autorizacion { font-size:9pt; }
+    .carta-solicitud-line { margin-bottom:3px !important; }
+    .carta-tipo-permiso { margin-bottom:3px !important; }
+    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
+  </style>
+</head>
+<body>${cartaEl.outerHTML}</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
   // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
@@ -712,8 +782,8 @@ export class PermisosComponent implements OnInit {
 
     setTimeout(() => {
       this.imprimirCarta();
-      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1000);
-    }, 150);
+      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1500);
+    }, 300);
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────
