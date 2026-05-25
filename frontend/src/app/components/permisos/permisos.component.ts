@@ -263,7 +263,7 @@ export class PermisosComponent implements OnInit {
   }
 
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
-  private resetFirmas(permiso?: any) {
+  private resetFirmas(permiso?: Permiso) {
     const cfg = permiso?.firmas_config;
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
@@ -302,6 +302,8 @@ export class PermisosComponent implements OnInit {
   irAEditarPermiso(permiso: Permiso) {
     this.editingPermiso = permiso;
     this.vistaActual = 'editarPermiso';
+    // Cargar firmas desde el permiso (firmas_config viene del backend)
+    console.log('firmas_config al editar:', (permiso as any).firmas_config);
     this.resetFirmas(permiso);
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
@@ -538,7 +540,14 @@ export class PermisosComponent implements OnInit {
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
       next: (res: any) => {
         this.loading = false;
-        if (res.success) { this.volverATabla(); }
+        if (res.success) {
+          // Actualizar también el objeto local para que imprimir desde tabla use datos frescos
+          const idx = this.permisos.findIndex(p => p.id === this.editingPermiso!.id);
+          if (idx !== -1 && res.data) {
+            this.permisos[idx] = { ...this.permisos[idx], ...res.data, firmas_config: data.firmas_config };
+          }
+          this.volverATabla();
+        }
         else this.error = res.error || 'Error actualizando';
       },
       error: () => { this.error = 'Error de conexión'; this.loading = false; }
@@ -777,8 +786,12 @@ export class PermisosComponent implements OnInit {
 
     this.imprimiendoDesdeTabla = true;
 
-    // Cargar firmas guardadas en BD para este permiso
-    this.resetFirmas(permiso);
+    // Usar las firmas actuales del componente (no recargar desde BD)
+    // Si se está editando este permiso, las firmas ya están en this.firmas
+    // Si se imprime desde la tabla sin editar, cargar desde BD
+    if (!this.editingPermiso || this.editingPermiso.id !== permiso.id) {
+      this.resetFirmas(permiso);
+    }
 
     setTimeout(() => {
       this.imprimirCarta();

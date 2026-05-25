@@ -32,6 +32,7 @@ export interface Permiso {
   creado_en?: string;
   actualizado_en?: string;
   autorizado_en?: string;
+  firmas_config?: { empleado: boolean; jefeDepto: boolean; jefePersonal: boolean; direccion: boolean } | null;
 }
 
 export interface ApiResponse<T> {

@@ -120,7 +120,13 @@ class PermisosModel {
     sql += ` ORDER BY p.creado_en DESC, e.nombre_completo ASC`;
 
     const [rows] = await db.query(sql);
-    return rows;
+    // Parsear firmas_config si viene como string
+    return rows.map((r) => ({
+      ...r,
+      firmas_config: r.firmas_config
+        ? (typeof r.firmas_config === 'string' ? JSON.parse(r.firmas_config) : r.firmas_config)
+        : null
+    }));
   }
 
   static async getById(id) {
@@ -131,7 +137,8 @@ class PermisosModel {
         e.numero_empleado,
         e.rol_id,
         e.area_id,
-        tp.nombre AS tipo_permiso_nombre
+        tp.nombre AS tipo_permiso_nombre,
+        p.firmas_config
       FROM permisos p
       INNER JOIN empleados e ON p.empleado_id = e.id
       LEFT JOIN tipos_permiso tp ON p.tipo_permiso_id = tp.id
