@@ -552,6 +552,7 @@ CREATE TABLE `permisos` (
   `dias_solicitados` INT NOT NULL,
   `estado` ENUM('PENDIENTE', 'AUTORIZADO', 'RECHAZADO') NOT NULL DEFAULT 'PENDIENTE',
   `observaciones` TEXT NULL,
+  `firmas_config` JSON NULL DEFAULT NULL COMMENT 'Configuracion de firmas visibles en la carta',
   `creado_en` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `actualizado_en` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `creado_por` INT NULL,

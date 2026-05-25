@@ -13,9 +13,9 @@ services:
 
     # Volúmenes para hot-reloading
     volumes:
-      - ./backend:/app
+      - ./backend:/usr/src/app
       # Este volumen anónimo evita que el node_modules local sobreescriba el del contenedor
-      - /app/node_modules
+      - /usr/src/app/node_modules
 
     # Comando para iniciar el servidor con nodemon
     command: npm run dev -- --legacy-watch

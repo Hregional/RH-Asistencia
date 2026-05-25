@@ -53,6 +53,14 @@ export class PermisosComponent implements OnInit {
   // Permiso en edición
   editingPermiso: Permiso | null = null;
 
+  // Firmas visibles en la carta (todas activas por defecto)
+  firmas = {
+    empleado: true,
+    jefeDepto: true,
+    jefePersonal: true,
+    direccion: true
+  };
+
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
 
@@ -237,15 +245,13 @@ export class PermisosComponent implements OnInit {
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   }
 
-  // ─── BUSCADOR EMPLEADO ────────────────────────────────────────────
+  // OPTIMIZADO BUSCADOR EMPLEADO SOLO NOM
   onEmpleadoBusqueda() {
     const t = this.norm(this.empleadoBusqueda);
     if (!t) { this.empleadosFiltrados = []; return; }
-    this.empleadosFiltrados = this.empleados.filter(e =>
-      [e.nombre_completo, String(e.numero_empleado),
-      (e as any).rol_nombre || '', (e as any).area_nombre || '']
-        .some(v => this.norm(String(v)).includes(t))
-    ).slice(0, 10);
+    this.empleadosFiltrados = this.empleados
+      .filter(e => this.norm(e.nombre_completo || '').includes(t))
+      .slice(0, 10);
   }
 
   seleccionarEmpleado(emp: Empleado) {
@@ -257,6 +263,21 @@ export class PermisosComponent implements OnInit {
   }
 
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
+  private resetFirmas(permiso?: Permiso) {
+    const cfg = permiso?.firmas_config;
+    if (cfg) {
+      const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
+      this.firmas = {
+        empleado:     parsed.empleado     ?? true,
+        jefeDepto:    parsed.jefeDepto    ?? true,
+        jefePersonal: parsed.jefePersonal ?? true,
+        direccion:    parsed.direccion    ?? true
+      };
+    } else {
+      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true };
+    }
+  }
+
   irASolicitud() {
     this.vistaActual = 'solicitud';
     this.editingPermiso = null;
@@ -266,6 +287,7 @@ export class PermisosComponent implements OnInit {
     this.solicitudForm = this.initSolicitudForm();
     this.cartaData = this.initCartaData();
     this.diasExcedidos = false;
+    this.resetFirmas();
   }
 
   /** Normaliza fecha ISO con timezone a 'YYYY-MM-DD' para inputs date */
@@ -280,6 +302,9 @@ export class PermisosComponent implements OnInit {
   irAEditarPermiso(permiso: Permiso) {
     this.editingPermiso = permiso;
     this.vistaActual = 'editarPermiso';
+    // Cargar firmas desde el permiso (firmas_config viene del backend)
+    console.log('firmas_config al editar:', (permiso as any).firmas_config);
+    this.resetFirmas(permiso);
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
     const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
@@ -315,10 +340,11 @@ export class PermisosComponent implements OnInit {
     this.editingPermiso = null;
     this.editingTipoPermiso = null;
     this.error = null;
+    this.resetFirmas();
     this.loadPermisos();
   }
 
-  // ─── TIPO PERMISO CHANGE ──────────────────────────────────────────
+  // ─── TIPO PERMISO CUANDO SE CAMBIA EN EDITAR 
   onTipoPermisoChange() {
     // Solo limpiar campos específicos del tipo anterior, no todo
     this.solicitudForm.tipo_permiso_otro = '';
@@ -332,7 +358,7 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // ─── CÁLCULO DE DÍAS HÁBILES (calendario guatemalteco) ───────────
+  // ─── CÁLCULO DE DÍAS HÁBILES (calendario GT)
   calcularDias() {
     // Si es permiso de 1 día, forzar fecha_fin = fecha_inicio antes de validar
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
@@ -403,7 +429,13 @@ export class PermisosComponent implements OnInit {
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
       fechaHoraImpresion: '',
-      autorizadoEn: ''
+      autorizadoEn: (() => {
+        // En formulario de creación/edición, mostrar hora actual como hora de generación
+        const ahora = new Date();
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const h = ahora.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+        return `${p2(ahora.getDate())}/${p2(ahora.getMonth()+1)}/${ahora.getFullYear()} ${p2(h%12||12)}:${p2(ahora.getMinutes())} ${ampm}`;
+      })()
     };
   }
 
@@ -437,21 +469,8 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar si tiene turno asignado en ese rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res: any) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea crear el permiso de todas formas?`)) return;
-        }
-        this.ejecutarGuardarSolicitud();
-      },
-      error: () => this.ejecutarGuardarSolicitud() // si falla la verificación, continuar
-    });
+    // Guardar directamente sin verificar turnos
+    this.ejecutarGuardarSolicitud();
   }
 
   private ejecutarGuardarSolicitud() {
@@ -463,6 +482,8 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_otro = null;
       data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
 
     this.permisosSvc.createPermiso(data).subscribe({
       next: (res: any) => {
@@ -500,21 +521,8 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar turnos asignados en el rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res: any) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea actualizar el permiso de todas formas?`)) return;
-        }
-        this.ejecutarActualizarPermiso();
-      },
-      error: () => this.ejecutarActualizarPermiso()
-    });
+    // Actualizar directamente sin verificar turnos
+    this.ejecutarActualizarPermiso();
   }
 
   private ejecutarActualizarPermiso() {
@@ -526,10 +534,20 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_otro = null;
       data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
+
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
       next: (res: any) => {
         this.loading = false;
-        if (res.success) { this.volverATabla(); }
+        if (res.success) {
+          // Actualizar también el objeto local para que imprimir desde tabla use datos frescos
+          const idx = this.permisos.findIndex(p => p.id === this.editingPermiso!.id);
+          if (idx !== -1 && res.data) {
+            this.permisos[idx] = { ...this.permisos[idx], ...res.data, firmas_config: data.firmas_config };
+          }
+          this.volverATabla();
+        }
         else this.error = res.error || 'Error actualizando';
       },
       error: () => { this.error = 'Error de conexión'; this.loading = false; }
@@ -538,62 +556,17 @@ export class PermisosComponent implements OnInit {
 
   // ─── ESTADO ───────────────────────────────────────────────────────
   cambiarEstadoEnEdicion(estado: 'AUTORIZADO' | 'RECHAZADO' | 'PENDIENTE') {
+    // Solo actualiza el formulario local — el backend se llama al dar "Actualizar"
     this.solicitudForm.estado = estado;
-    if (this.editingPermiso?.id) {
-      const permisoTemp = { ...this.editingPermiso, estado: this.solicitudForm.estado as any };
-      if (estado === 'AUTORIZADO') {
-        this.permisosSvc.getTurnosEnRango(permisoTemp.empleado_id, permisoTemp.fecha_inicio, permisoTemp.fecha_fin).subscribe({
-          next: (res: any) => {
-            if (res.tieneTurnos) {
-              const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-              if (!confirm(`⚠️ Tiene turno(s) asignado(s):\n${turnos}\n\n¿Autorizar de todas formas?`)) {
-                this.solicitudForm.estado = this.editingPermiso!.estado;
-                return;
-              }
-            }
-            this.ejecutarCambioEstado(permisoTemp, estado);
-          },
-          error: () => this.ejecutarCambioEstado(permisoTemp, estado)
-        });
-      } else {
-        this.ejecutarCambioEstado(permisoTemp, estado);
-      }
-    }
   }
 
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
-    if (estado === 'AUTORIZADO') {
-      this.permisosSvc.getTurnosEnRango(permiso.empleado_id, permiso.fecha_inicio, permiso.fecha_fin).subscribe({
-        next: (res: any) => {
-          if (res.tieneTurnos) {
-            const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-            if (!confirm(`⚠️ ${permiso.nombre_completo} tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea autorizar el permiso de todas formas?`)) return;
-          }
-          this.ejecutarCambioEstado(permiso, estado);
-        },
-        error: () => this.ejecutarCambioEstado(permiso, estado)
-      });
-    } else {
-      this.ejecutarCambioEstado(permiso, estado);
-    }
+    this.ejecutarCambioEstado(permiso, estado);
   }
 
   private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     this.loading = true;
     this.permisosSvc.updateEstadoPermiso(permiso.id!, estado).subscribe({
-      next: (res: any) => {
-        this.loading = false;
-        if (res.success) this.loadPermisos();
-        else this.error = res.error || 'Error';
-      },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
-    });
-  }
-
-  eliminarPermiso(permiso: Permiso) {
-    if (!confirm(`¿Eliminar permiso de ${permiso.nombre_completo}?`)) return;
-    this.loading = true;
-    this.permisosSvc.deletePermiso(permiso.id!).subscribe({
       next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadPermisos();
@@ -635,9 +608,16 @@ export class PermisosComponent implements OnInit {
           this.editingTipoPermiso = null;
           this.tipoPermisoForm = this.initTipoForm();
           this.loadTiposPermiso();
-        } else this.error = res.error || 'Error';
+        } else {
+          this.error = res.error || 'Error';
+          setTimeout(() => this.error = null, 4000);
+        }
       },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
+      error: () => {
+        this.error = 'Ya existe este tipo de permiso';
+        this.loading = false;
+        setTimeout(() => this.error = null, 4000);
+      }
     });
   }
 
@@ -664,7 +644,77 @@ export class PermisosComponent implements OnInit {
 
   // ─── IMPRIMIR ─────────────────────────────────────────────────────
   imprimirCarta() {
-    window.print();
+    // Buscar la carta dentro del contenedor oculto de impresión
+    const contenedor = document.querySelector('[data-print-container]');
+    const cartaEl = contenedor
+      ? contenedor.querySelector('.carta-hoja')
+      : document.querySelector('.carta-hoja');
+
+    if (!cartaEl) { window.print(); return; }
+
+    const win = window.open('', '_blank', 'width=816,height=1056');
+    if (!win) { window.print(); return; }
+
+    const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(el => el.outerHTML).join('\n');
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  ${estilos}
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 10mm 15mm;
+      margin-top: 0mm;
+      margin-bottom: 0mm;
+    }
+    @page :first { margin-top: 0; }
+    @page :left { margin-left: 10mm; }
+    @page :right { margin-right: 10mm; }
+    head { display: none !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
+    html { background: #fff !important; }
+    .carta-hoja { width: 100%; height: 100vh; display: flex; flex-direction: column; border: none; margin: 0; max-width: 100%; font-size: 10pt; line-height: 1.4; color: #111; overflow: hidden; }
+    .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
+    .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
+    .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
+    .carta-hro-logo-left { display:flex; align-items:flex-start; gap:8px; }
+    .logo-escudo { font-size:26pt; line-height:1; }
+    .carta-hro-inst { font-size:7.5pt; line-height:1.3; }
+    .carta-hro-logo-right { text-align:right; }
+    .hro-text { font-size:28pt; font-weight:900; font-style:italic; letter-spacing:-2px; line-height:1; display:block; }
+    .hro-sub { font-size:6pt; letter-spacing:1px; text-align:center; margin-top:2px; }
+    .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
+    .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
+    .fecha-mes { min-width:80px; }
+    .carta-hro-destinatario { margin-bottom:6px; font-size:9pt; line-height:1.4; }
+    .carta-hro-body { margin-bottom:4px; flex:1; }
+    .carta-hro-body p { font-size:9pt; margin:0 0 4px; }
+    .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
+    .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
+    .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
+    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
+    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
+    .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
+    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
+    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:1px; font-size:7.5pt; }
+    .firma-linea { width:100% !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
+    .firma-label { font-weight:600; font-size:7pt; text-transform:uppercase; display:block !important; }
+    .firma-sub { font-size:6.5pt; color:#333; display:block !important; }
+    .dias-autorizacion { font-size:9pt; }
+    .carta-solicitud-line { margin-bottom:3px !important; }
+    .carta-tipo-permiso { margin-bottom:3px !important; }
+    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
+  </style>
+</head>
+<body>${cartaEl.outerHTML}</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
   // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
@@ -719,9 +769,9 @@ export class PermisosComponent implements OnInit {
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
       autorizadoEn: (() => {
-        const ae = permiso.autorizado_en;
+        // Si está autorizado usar autorizado_en, si no usar creado_en como referencia
+        const ae = permiso.autorizado_en || permiso.creado_en;
         if (!ae) return '';
-        // Asegurar que se interprete como UTC agregando Z si no la tiene
         const isoStr = String(ae).includes('Z') || String(ae).includes('+') ? String(ae) : String(ae).replace(' ', 'T') + 'Z';
         const d = new Date(isoStr);
         if (isNaN(d.getTime())) return '';
@@ -735,10 +785,18 @@ export class PermisosComponent implements OnInit {
     };
 
     this.imprimiendoDesdeTabla = true;
+
+    // Usar las firmas actuales del componente (no recargar desde BD)
+    // Si se está editando este permiso, las firmas ya están en this.firmas
+    // Si se imprime desde la tabla sin editar, cargar desde BD
+    if (!this.editingPermiso || this.editingPermiso.id !== permiso.id) {
+      this.resetFirmas(permiso);
+    }
+
     setTimeout(() => {
       this.imprimirCarta();
-      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1000);
-    }, 150);
+      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1500);
+    }, 300);
   }
 
   // ─── HELPERS ──────────────────────────────────────────────────────
