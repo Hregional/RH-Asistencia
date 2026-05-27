@@ -364,6 +364,31 @@ export class PermisosComponent implements OnInit {
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
       this.solicitudForm.fecha_fin = this.solicitudForm.fecha_inicio;
     }
+
+    // Validar que las fechas no sean fin de semana
+    if (this.solicitudForm.fecha_inicio) {
+      const dInicio = new Date(this.solicitudForm.fecha_inicio + 'T00:00:00');
+      if (dInicio.getDay() === 0 || dInicio.getDay() === 6) {
+        this.error = 'La fecha de inicio no puede ser sábado o domingo.';
+        this.solicitudForm.fecha_inicio = '';
+        this.solicitudForm.dias_solicitados = 0;
+        this.actualizarCarta();
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+    if (this.solicitudForm.fecha_fin && !this.esDiaUnico) {
+      const dFin = new Date(this.solicitudForm.fecha_fin + 'T00:00:00');
+      if (dFin.getDay() === 0 || dFin.getDay() === 6) {
+        this.error = 'La fecha de fin no puede ser sábado o domingo.';
+        this.solicitudForm.fecha_fin = '';
+        this.solicitudForm.dias_solicitados = 0;
+        this.actualizarCarta();
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+
     if (!this.solicitudForm.fecha_inicio || !this.solicitudForm.fecha_fin) {
       this.solicitudForm.dias_solicitados = 0;
       this.actualizarCarta();

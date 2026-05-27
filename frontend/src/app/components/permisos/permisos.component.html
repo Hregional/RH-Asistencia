@@ -461,10 +461,7 @@
     </p>
     <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
     <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
-      No incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
-    </p>
-    <p *ngIf="cartaData.finesDeSemanaCont > 0" class="carta-feriados">
-      No incluye {{ cartaData.finesDeSemanaCont }} día(s) de fin de semana
+      Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
     </p>
     <div class="carta-fechas-row">
       <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
