@@ -1,16 +1,14 @@
 <ng-container *ngIf="cartaData as carta">
     <div class="carta-hoja">
+
+        <!-- ── COPIA 1 ── -->
         <div class="carta-copia-bloque">
             <div class="carta-hro-header">
                 <div class="carta-hro-logo-left">
-                    <div class="logo-escudo">⚕</div>
-                    <div class="carta-hro-inst">
-                        <strong>Ministerio de Salud Pública y Asistencia Social</strong><br>
-                        <strong> Hospital Regional de Occidente, Quetzaltenango</strong>
-                    </div>
+                    <img src="assets/Permisos-MSPAS.png" alt="MSPAS" class="carta-logo-img" />
                 </div>
                 <div class="carta-hro-logo-right">
-                    <span class="hro-text">HRO</span>
+                    <img src="assets/Permisos-MSPAS-2.jpg" alt="MSPAS2" class="carta-logo-img" />
                 </div>
             </div>
 
@@ -31,9 +29,12 @@
             </div>
 
             <div class="carta-hro-destinatario">
-                Señor Director:<br>
-                <strong>Hospital Regional de Occidente</strong><br>
-                Su Despacho
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() === 'vacaciones'">
+                    Señor Director: <strong>Hospital Regional de Occidente</strong> Su Despacho
+                </ng-container>
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() !== 'vacaciones'">
+                    Señores: <strong>Recursos Humanos</strong> Hospital Regional de Occidente Su Despacho
+                </ng-container>
             </div>
 
             <div class="carta-hro-body">
@@ -45,12 +46,11 @@
                     </span>
                 </p>
                 <p class="carta-tipo-permiso">
-                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase
-                            }}</strong></span>
+                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase }}</strong></span>
                 </p>
                 <p class="carta-mensaje">{{ carta.mensaje }}</p>
                 <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
-                    Incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
+                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
                 </p>
                 <div class="carta-fechas-row">
                     <span *ngIf="carta.fechaInicio === carta.fechaFin">
@@ -58,9 +58,12 @@
                     </span>
                     <ng-container *ngIf="carta.fechaInicio !== carta.fechaFin">
                         <span>Del <span class="fecha-campo">{{ carta.fechaInicio }}</span></span>
-                        <span>Al <span class="fecha-campo">{{ carta.fechaFin }}</span></span>
+                        <span>Al <span class="fecha-campo">{{ carta.fechaFinExtendida || carta.fechaFin }}</span></span>
                     </ng-container>
                 </div>
+                <p *ngIf="carta.motivoExtension" class="carta-feriados">
+                    Extensión: {{ carta.motivoExtension }}
+                </p>
                 <p class="carta-sujeto">
                     <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
                 </p>
@@ -89,17 +92,14 @@
             </div>
         </div>
 
+        <!-- ── COPIA 2 ── -->
         <div class="carta-copia-bloque">
             <div class="carta-hro-header">
                 <div class="carta-hro-logo-left">
-                    <div class="logo-escudo">⚕</div>
-                    <div class="carta-hro-inst">
-                        <strong>Ministerio de Salud Pública y Asistencia Social</strong><br>
-                        <strong> Hospital Regional de Occidente, Quetzaltenango</strong>
-                    </div>
+                    <img src="assets/Permisos-MSPAS.png" alt="MSPAS" class="carta-logo-img" />
                 </div>
                 <div class="carta-hro-logo-right">
-                    <span class="hro-text">HRO</span>
+                    <img src="assets/Permisos-MSPAS-2.jpg" alt="MSPAS2" class="carta-logo-img" />
                 </div>
             </div>
 
@@ -120,9 +120,12 @@
             </div>
 
             <div class="carta-hro-destinatario">
-                Señor Director:<br>
-                <strong>Hospital Regional de Occidente</strong><br>
-                Su Despacho
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() === 'vacaciones'">
+                    Señor Director: <strong>Hospital Regional de Occidente</strong> Su Despacho
+                </ng-container>
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() !== 'vacaciones'">
+                    Señores: <strong>Recursos Humanos</strong> Hospital Regional de Occidente Su Despacho
+                </ng-container>
             </div>
 
             <div class="carta-hro-body">
@@ -134,22 +137,24 @@
                     </span>
                 </p>
                 <p class="carta-tipo-permiso">
-                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase
-                            }}</strong></span>
+                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase }}</strong></span>
                 </p>
                 <p class="carta-mensaje">{{ carta.mensaje }}</p>
                 <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
-                    Incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
+                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
                 </p>
-         F       <div class="carta-fechas-row">
+                <div class="carta-fechas-row">
                     <span *ngIf="carta.fechaInicio === carta.fechaFin">
                         Fecha: <span class="fecha-campo">{{ carta.fechaInicio }}</span>
                     </span>
                     <ng-container *ngIf="carta.fechaInicio !== carta.fechaFin">
                         <span>Del <span class="fecha-campo">{{ carta.fechaInicio }}</span></span>
-                        <span>Al <span class="fecha-campo">{{ carta.fechaFin }}</span></span>
+                        <span>Al <span class="fecha-campo">{{ carta.fechaFinExtendida || carta.fechaFin }}</span></span>
                     </ng-container>
                 </div>
+                <p *ngIf="carta.motivoExtension" class="carta-feriados">
+                    Extensión: {{ carta.motivoExtension }}
+                </p>
                 <p class="carta-sujeto">
                     <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
                 </p>
@@ -177,5 +182,6 @@
                 </div>
             </div>
         </div>
+
     </div>
 </ng-container>

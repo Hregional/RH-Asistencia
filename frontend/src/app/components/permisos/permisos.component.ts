@@ -6,6 +6,7 @@ import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.s
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
 import { numeroALetras } from '../../utils/number-to-words';
 import {
+  esFeriado,
   parseFechaLocal,
   calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango
 } from '../../utils/feriados';
@@ -60,6 +61,9 @@ export class PermisosComponent implements OnInit {
     jefePersonal: true,
     direccion: true
   };
+
+  // Extensión de días adicionales
+  tieneExtension = false;
 
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
@@ -134,7 +138,10 @@ export class PermisosComponent implements OnInit {
       fecha_inicio: '',
       fecha_fin: '',
       dias_solicitados: 0,
-      estado: 'PENDIENTE'
+      estado: 'PENDIENTE',
+      dias_adicionales: null,
+      motivo_extension: null,
+      fecha_fin_extendida: null
     };
   }
 
@@ -162,11 +169,14 @@ export class PermisosComponent implements OnInit {
       creadoPor: '',
       autorizadoPor: '',
       fechaHoraImpresion: '',
-      autorizadoEn: ''
+      autorizadoEn: '',
+      fechaFinExtendida: '',
+      motivoExtension: '',
+      diasAdicionales: null
     };
   }
 
-  // ─── CARGA DE DATOS ───────────────────────────────────────────────
+  // ─── CARGA DE DATOS 
   loadPermisos() {
     this.loading = true;
     // Cargar todos los permisos para gestión (vigentes, futuros y recientes)
@@ -262,6 +272,74 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
+  // CÁLCULO FECHA FIN EXTENDIDA SIN CONSIDERAR FINES DE SEM Y TAMPOCO FERIADOS ESTABLECIDOS
+  /** Suma N días hábiles desde una fecha dada (máx 30 días adicionales, límite de 500 iteraciones) */
+  calcularFechaFinExtendida(): void {
+    const dias = this.solicitudForm.dias_adicionales;
+    const fechaBase = this.solicitudForm.fecha_fin;
+
+    // Validar: requiere fecha_fin y días entre 1 y 30
+    if (!dias || dias <= 0 || dias > 30 || !fechaBase) {
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+      return;
+    }
+
+    let fecha = parseFechaLocal(fechaBase);
+    let contados = 0;
+    let iteraciones = 0;
+    const MAX_ITER = 500; // Límite de seguridad para evitar loop infinito
+
+    while (contados < dias && iteraciones < MAX_ITER) {
+      iteraciones++;
+      fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
+      const dia = fecha.getDay();
+      if (dia === 0 || dia === 6) continue; // fin de semana
+      if (esFeriado(fecha)) continue;       // feriado GT
+      contados++;
+    }
+
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    this.solicitudForm.fecha_fin_extendida = `${y}-${m}-${d}`;
+    this.actualizarCarta();
+  }
+
+  onDiasAdicionalesChange(valor: any): void {
+    // Normalizar: null, vacío o fuera de rango
+    let dias = Number(valor);
+    if (isNaN(dias) || dias < 1) dias = 1;
+    if (dias > 30) dias = 30;
+    this.solicitudForm.dias_adicionales = dias;
+    this.calcularFechaFinExtendida();
+  }
+
+  onToggleExtension(valor: boolean): void {
+    // tieneExtension ya fue actualizado por ngModel
+    if (!valor) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.motivo_extension = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+    } else {
+      // Si ya hay días ingresados y fecha_fin, recalcular al activar
+      if (this.solicitudForm.dias_adicionales && this.solicitudForm.fecha_fin) {
+        this.calcularFechaFinExtendida();
+      }
+    }
+  }
+
+  toggleExtension(): void {
+    this.tieneExtension = !this.tieneExtension;
+    if (!this.tieneExtension) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.motivo_extension = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+    }
+  }
+
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
   private resetFirmas(permiso?: Permiso) {
     const cfg = permiso?.firmas_config;
@@ -288,6 +366,7 @@ export class PermisosComponent implements OnInit {
     this.cartaData = this.initCartaData();
     this.diasExcedidos = false;
     this.resetFirmas();
+    this.tieneExtension = false;
   }
 
   /** Normaliza fecha ISO con timezone a 'YYYY-MM-DD' para inputs date */
@@ -305,6 +384,8 @@ export class PermisosComponent implements OnInit {
     // Cargar firmas desde el permiso (firmas_config viene del backend)
     console.log('firmas_config al editar:', (permiso as any).firmas_config);
     this.resetFirmas(permiso);
+    // Cargar estado de extensión
+    this.tieneExtension = !!(permiso.dias_adicionales && permiso.dias_adicionales > 0);
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
     const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
@@ -341,6 +422,14 @@ export class PermisosComponent implements OnInit {
     this.editingTipoPermiso = null;
     this.error = null;
     this.resetFirmas();
+    this.tieneExtension = false;
+    // Resetear formulario completo para que no queden datos sucios
+    this.solicitudForm = this.initSolicitudForm();
+    this.empleadoSeleccionado = null;
+    this.empleadoBusqueda = '';
+    this.empleadosFiltrados = [];
+    this.diasExcedidos = false;
+    this.cartaData = this.initCartaData();
     this.loadPermisos();
   }
 
@@ -355,6 +444,13 @@ export class PermisosComponent implements OnInit {
     this.solicitudForm.fecha_fin = '';
     this.solicitudForm.dias_solicitados = 0;
     this.diasExcedidos = false;
+
+    // Resetear extensión porque las fechas cambiaron
+    this.tieneExtension = false;
+    this.solicitudForm.dias_adicionales = null;
+    this.solicitudForm.motivo_extension = null;
+    this.solicitudForm.fecha_fin_extendida = null;
+
     this.actualizarCarta();
   }
 
@@ -402,10 +498,15 @@ export class PermisosComponent implements OnInit {
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     this.diasExcedidos = !!(tipo && this.solicitudForm.dias_solicitados > tipo.dias_permitidos);
 
-    this.actualizarCarta();
+    // Si hay extensión activa y hay días ingresados, recalcular fecha fin extendida
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      this.calcularFechaFinExtendida();
+    } else {
+      this.actualizarCarta();
+    }
   }
 
-  // ─── CARTA PREVIEW ────────────────────────────────────────────────
+  // ─── CARTA PREVIEW 
   actualizarCarta() {
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     const hoy = new Date();
@@ -460,7 +561,12 @@ export class PermisosComponent implements OnInit {
         const p2 = (n: number) => String(n).padStart(2, '0');
         const h = ahora.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
         return `${p2(ahora.getDate())}/${p2(ahora.getMonth()+1)}/${ahora.getFullYear()} ${p2(h%12||12)}:${p2(ahora.getMinutes())} ${ampm}`;
-      })()
+      })(),
+      fechaFinExtendida: this.solicitudForm.fecha_fin_extendida
+        ? (() => { const [y,m,d] = (this.solicitudForm.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        : '',
+      motivoExtension: this.solicitudForm.motivo_extension || '',
+      diasAdicionales: this.solicitudForm.dias_adicionales || null
     };
   }
 
@@ -492,6 +598,15 @@ export class PermisosComponent implements OnInit {
       const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
       this.error = `Los días hábiles (${this.solicitudForm.dias_solicitados}) exceden el límite del tipo de permiso (${tipo?.dias_permitidos} días).`;
       return;
+    }
+
+    // Validar extensión: si hay días adicionales, el motivo es obligatorio
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      if (!this.solicitudForm.motivo_extension?.trim()) {
+        this.error = 'El motivo de extensión es obligatorio cuando se agregan días adicionales.';
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
     }
 
     // Guardar directamente sin verificar turnos
@@ -544,6 +659,15 @@ export class PermisosComponent implements OnInit {
       const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
       this.error = `Los días hábiles (${this.solicitudForm.dias_solicitados}) exceden el límite del tipo de permiso (${tipo?.dias_permitidos} días).`;
       return;
+    }
+
+    // Validar extensión: si hay días adicionales, el motivo es obligatorio
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      if (!this.solicitudForm.motivo_extension?.trim()) {
+        this.error = 'El motivo de extensión es obligatorio cuando se agregan días adicionales.';
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
     }
 
     // Actualizar directamente sin verificar turnos
@@ -660,6 +784,8 @@ export class PermisosComponent implements OnInit {
         const msg = err?.error?.error || '';
         if (err.status === 409 || msg.includes('está siendo usado')) {
           this.avisoModal = msg || `El tipo "${tipo.nombre}" está siendo usado en permisos existentes y no puede eliminarse.`;
+        } else if (err.status === 403) {
+          this.avisoModal = msg || `El tipo "${tipo.nombre}" no puede eliminarse.`;
         } else {
           this.error = 'Error de conexión';
         }
@@ -667,7 +793,7 @@ export class PermisosComponent implements OnInit {
     });
   }
 
-  // ─── IMPRIMIR ─────────────────────────────────────────────────────
+  // ─── IMPRIMIR 
   imprimirCarta() {
     // Buscar la carta dentro del contenedor oculto de impresión
     const contenedor = document.querySelector('[data-print-container]');
@@ -706,12 +832,10 @@ export class PermisosComponent implements OnInit {
     .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
     .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
     .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
-    .carta-hro-logo-left { display:flex; align-items:flex-start; gap:8px; }
-    .logo-escudo { font-size:26pt; line-height:1; }
-    .carta-hro-inst { font-size:7.5pt; line-height:1.3; }
+    .carta-hro-logo-left { display:flex; align-items:flex-start; }
+    .carta-logo-img { height:50px; width:auto; object-fit:contain; }
     .carta-hro-logo-right { text-align:right; }
-    .hro-text { font-size:28pt; font-weight:900; font-style:italic; letter-spacing:-2px; line-height:1; display:block; }
-    .hro-sub { font-size:6pt; letter-spacing:1px; text-align:center; margin-top:2px; }
+    .carta-hro-inst-right { font-size:7pt; line-height:1.5; text-align:right; color:#111; }
     .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
     .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
     .fecha-mes { min-width:80px; }
@@ -742,7 +866,7 @@ export class PermisosComponent implements OnInit {
     setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
-  // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
+  // ─── IMPRIMIR DESDE TABLA 
   imprimirPermisoDirecto(permiso: Permiso) {
     const emp = this.empleados.find(e => e.id === permiso.empleado_id);
     const rolNombre = emp ? (this.roles.find(r => r.id === emp.rol_id)?.nombre || '') : '';
@@ -806,6 +930,11 @@ export class PermisosComponent implements OnInit {
         const h = gt.getUTCHours(), ampm = h >= 12 ? 'PM' : 'AM';
         return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth() + 1)}/${gt.getUTCFullYear()} ${p2(h % 12 || 12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
       })(),
+      fechaFinExtendida: permiso.fecha_fin_extendida
+        ? (() => { const [y,m,d] = (permiso.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        : '',
+      motivoExtension: permiso.motivo_extension || '',
+      diasAdicionales: permiso.dias_adicionales || null,
       fechaHoraImpresion
     };
 
@@ -824,7 +953,7 @@ export class PermisosComponent implements OnInit {
     }, 300);
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────
+  // ─── HELPERS 
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';
@@ -846,12 +975,15 @@ export class PermisosComponent implements OnInit {
     return hoy >= inicio && hoy <= fin;
   }
 
-  /** Retorna true si fecha_fin ya pasó */
+  /** Retorna true si la fecha efectiva de fin ya pasó (usa fecha_fin_extendida si existe) */
   yaFinalizo(permiso: Permiso): boolean {
     const hoy = new Date().toISOString().substring(0, 10);
-    const fin = (permiso.fecha_fin as any instanceof Date)
-      ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
-      : String(permiso.fecha_fin).substring(0, 10);
-    return hoy > fin;
+    // Usar fecha_fin_extendida si existe, si no fecha_fin
+    const finEfectivo = permiso.fecha_fin_extendida
+      ? String(permiso.fecha_fin_extendida).substring(0, 10)
+      : (permiso.fecha_fin as any instanceof Date)
+        ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
+        : String(permiso.fecha_fin).substring(0, 10);
+    return hoy > finEfectivo;
   }
 }

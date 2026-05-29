@@ -22,6 +22,9 @@ export interface CartaData {
     autorizadoPor: string;
     fechaHoraImpresion: string;
     autorizadoEn: string;
+    fechaFinExtendida?: string;
+    motivoExtension?: string;
+    diasAdicionales?: number | null;
 }
 
 export interface PopupObservaciones {
