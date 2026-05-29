@@ -1210,12 +1210,15 @@ export class ReportesComponent implements OnInit {
       'Fecha Inicio': p.fecha_inicio,
       'Fecha Fin': p.fecha_fin,
       'Días': p.dias_solicitados,
+      'Días Ext.': p.dias_adicionales || '',
+      'Fecha Fin Ext.': p.fecha_fin_extendida || '',
+      'Motivo Ext.': p.motivo_extension || '',
       'Estado': p.estado,
       'Observaciones': p.observaciones || ''
     }));
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(datos);
-    ws['!cols'] = [5, 25, 20, 20, 20, 12, 12, 8, 12, 30].map(w => ({ wch: w }));
+    ws['!cols'] = [5, 25, 20, 20, 20, 12, 12, 8, 10, 14, 25, 12, 30].map(w => ({ wch: w }));
     XLSX.utils.book_append_sheet(wb, ws, 'Permisos');
     XLSX.writeFile(wb, `Reporte_Permisos_${this.fechaDesde}_${this.fechaHasta}.xlsx`);
   }
@@ -1249,6 +1252,9 @@ export class ReportesComponent implements OnInit {
           { header: 'Inicio', dataKey: 'inicio' },
           { header: 'Fin', dataKey: 'fin' },
           { header: 'Días', dataKey: 'dias' },
+          { header: 'Días Ext.', dataKey: 'diasExt' },
+          { header: 'Fin Ext.', dataKey: 'finExt' },
+          { header: 'Motivo Ext.', dataKey: 'motivoExt' },
           { header: 'Estado', dataKey: 'estado' }
         ],
         body: this.reportePermisos.map((p, i) => ({
@@ -1259,6 +1265,9 @@ export class ReportesComponent implements OnInit {
           inicio: p.fecha_inicio,
           fin: p.fecha_fin,
           dias: p.dias_solicitados,
+          diasExt: p.dias_adicionales || '—',
+          finExt: p.fecha_fin_extendida || '—',
+          motivoExt: p.motivo_extension || '—',
           estado: p.estado
         })),
         startY: 45,

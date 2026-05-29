@@ -30,9 +30,9 @@ export class EmpleadosComponent implements OnInit {
   error: string | null = null;
 
   // Mapa de permisos vigentes por empleado_id
-  permisosVigentes = new Map<number, { estado: string; fecha_inicio: string; fecha_fin: string }>();
+  permisosVigentes = new Map<number, { estado: string; fecha_inicio: string; fecha_fin: string; fecha_fin_extendida?: string }>();
   // Objeto plano para detección de cambios de Angular
-  permisosVigentesObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string }> = {};
+  permisosVigentesObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string; fecha_fin_extendida?: string }> = {};
 
   showForm = false;
   editingEmpleado: Empleado | null = null;
@@ -301,7 +301,7 @@ export class EmpleadosComponent implements OnInit {
     this.permisosSvc.getPermisosVigentesHoy().subscribe({
       next: (res) => {
         if (res.success && res.data) {
-          const nuevoObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string }> = {};
+          const nuevoObj: Record<number, { estado: string; fecha_inicio: string; fecha_fin: string; fecha_fin_extendida?: string }> = {};
           // Si un empleado tiene AUTORIZADO y PENDIENTE, AUTORIZADO tiene prioridad
           res.data.forEach((p: any) => {
             const existing = nuevoObj[p.empleado_id];
@@ -309,7 +309,8 @@ export class EmpleadosComponent implements OnInit {
               nuevoObj[p.empleado_id] = {
                 estado: p.estado,
                 fecha_inicio: p.fecha_inicio,
-                fecha_fin: p.fecha_fin
+                fecha_fin: p.fecha_fin,
+                fecha_fin_extendida: p.fecha_fin_extendida || undefined
               };
             }
           });

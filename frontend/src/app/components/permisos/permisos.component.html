@@ -143,7 +143,7 @@
     </div>
 
     <!-- Campos personalizados — NO se guardan en tipos de permiso -->
-    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1">
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1 && empleadoSeleccionado">
       <div class="form-row">
         <div class="form-group">
           <label>Nombre del Permiso *</label>
@@ -152,24 +152,24 @@
         </div>
         <div class="form-group">
           <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="180"
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="50"
             required></textarea>
         </div>
       </div>
     </ng-container>
 
     <!-- Fechas con calendarios -->
-    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined">
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && empleadoSeleccionado">
       <div class="form-row">
         <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
           <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
+          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
             [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
         </div>
         <div class="form-group" *ngIf="!esDiaUnico">
           <label>Fecha de Fin</label>
           <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-            [min]="solicitudForm.fecha_inicio || hoy" />
+            [min]="solicitudForm.fecha_inicio || ''" />
         </div>
         <div class="form-group form-group-small">
           <label>Días hábiles</label>
@@ -193,6 +193,35 @@
           </div>
         </div>
       </div>
+    </ng-container>
+
+    <!-- Extensión de días adicionales — visible cuando hay empleado Y tipo seleccionado -->
+    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Días adicionales</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="tieneExtension" (ngModelChange)="onToggleExtension($event)" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <ng-container *ngIf="tieneExtension">
+        <div class="form-row extension-row">
+          <div class="form-group form-group-small">
+            <label>Días adicionales</label>
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" min="1" max="30"
+              (ngModelChange)="onDiasAdicionalesChange($event)" />
+          </div>
+          <div class="form-group form-group-small">
+            <label>Fecha fin extendida</label>
+            <input type="text" [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'" readonly style="background:#e9ecef;" />
+          </div>
+          <div class="form-group">
+            <label>Motivo de extensión <span class="req">*</span></label>
+            <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
+              placeholder="Motivo obligatorio" maxlength="50" style="min-height:38px;" required></textarea>
+          </div>
+        </div>
+      </ng-container>
     </ng-container>
 
     <!-- Carta preview -->
@@ -240,7 +269,7 @@
         </div>
         <div class="form-group">
           <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="180" required
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="50" required
             style="min-height:38px;"></textarea>
         </div>
       </div>
@@ -250,13 +279,13 @@
     <div class="form-row">
       <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
         <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required [min]="hoy"
+        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
           [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
       </div>
       <div class="form-group" *ngIf="!esDiaUnico">
         <label>Fecha de Fin</label>
         <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-          [min]="solicitudForm.fecha_inicio || hoy" />
+          [min]="solicitudForm.fecha_inicio || ''" />
       </div>
       <div class="form-group form-group-small">
         <label>Días hábiles</label>
@@ -279,25 +308,53 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Estado</label>
-      <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="cambiarEstadoEnEdicion($event)">
-        <option value="PENDIENTE">Pendiente</option>
-        <option value="AUTORIZADO">Autorizado</option>
-        <option value="RECHAZADO">Rechazado</option>
-      </select>
-    </div>
-
-    <div class="form-group">
-      <label>Observaciones</label>
-      <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
-        maxlength="75"></textarea>
-    </div>
-
-    <!-- Vista previa carta en edición -->
-    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.fecha_inicio">
-      <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+    <!-- Extensión de días adicionales (editar) — visible cuando hay tipo seleccionado -->
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Días adicionales</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="tieneExtension" (ngModelChange)="onToggleExtension($event)" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <ng-container *ngIf="tieneExtension">
+        <div class="form-row extension-row">
+          <div class="form-group form-group-small">
+            <label>Días adicionales</label>
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" min="1" max="30"
+              (ngModelChange)="onDiasAdicionalesChange($event)" />
+          </div>
+          <div class="form-group form-group-small">
+            <label>Fecha fin extendida</label>
+            <input type="text" [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'" readonly style="background:#e9ecef;" />
+          </div>
+          <div class="form-group">
+            <label>Motivo de extensión <span class="req">*</span></label>
+            <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
+              placeholder="Motivo obligatorio" maxlength="50" style="min-height:38px;" required></textarea>
+          </div>
+        </div>
+      </ng-container>
     </ng-container>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Estado</label>
+        <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="cambiarEstadoEnEdicion($event)">
+          <option value="PENDIENTE">Pendiente</option>
+          <option value="AUTORIZADO">Autorizado</option>
+          <option value="RECHAZADO">Rechazado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observaciones</label>
+        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+          maxlength="75" style="min-height:38px;"></textarea>
+      </div>
+    </div>
+
+    <!-- Vista previa carta en edición — siempre visible -->
+    <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
 
     <div class="form-actions">
       <button class="btn btn-primary" (click)="actualizarPermiso()" [disabled]="loading">Actualizar</button>
@@ -316,7 +373,8 @@
       <div class="form-row">
         <div class="form-group">
           <label>Nombre</label>
-          <input type="text" [(ngModel)]="tipoPermisoForm.nombre" maxlength="30" />
+          <input type="text" [(ngModel)]="tipoPermisoForm.nombre" maxlength="30"
+            [disabled]="editingTipoPermiso?.nombre?.toLowerCase() === 'vacaciones'" />
         </div>
         <div class="form-group form-group-small">
           <label>Días</label>
@@ -356,7 +414,8 @@
             <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
             <td class="action-buttons">
               <button class="btn btn-primary btn-small" (click)="editarTipoPermiso(tipo)">Editar</button>
-              <button class="btn btn-danger btn-small" (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
+              <button *ngIf="tipo.nombre.toLowerCase() !== 'vacaciones'"
+                class="btn btn-danger btn-small" (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
             </td>
           </tr>
           <tr *ngIf="tiposPermiso.length === 0">
@@ -415,14 +474,10 @@
 <ng-template #cartaCuerpo>
   <div class="carta-hro-header">
     <div class="carta-hro-logo-left">
-      <div class="logo-escudo">⚕</div>
-      <div class="carta-hro-inst">
-        <strong>Ministerio de Salud Pública y Asistencia Social</strong><br>
-        <strong> Hospital Regional de Occidente, Quetzaltenango</strong>
-      </div>
+      <img src="assets/Permisos-MSPAS.jpg" alt="MSPAS" class="carta-logo-img" />
     </div>
     <div class="carta-hro-logo-right">
-      <span class="hro-text">HRO</span>
+      <img src="assets/Permisos-MSPAS-2.jpg" alt="MSPAS2" class="carta-logo-img" />
     </div>
   </div>
 
@@ -443,9 +498,15 @@
   </div>
 
   <div class="carta-hro-destinatario">
-    Señor Director:<br>
-    <strong>Hospital Regional de Occidente</strong><br>
-    Su Despacho
+    <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() === 'vacaciones'">
+      Señor Director:<br>
+      A: Su Despacho
+    </ng-container>
+    <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() !== 'vacaciones'">
+      Señores:
+      <strong>Recursos Humanos</strong><br>
+      A: Su Despacho
+    </ng-container>
   </div>
 
   <div class="carta-hro-body">
@@ -461,10 +522,7 @@
     </p>
     <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
     <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
-      No incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
-    </p>
-    <p *ngIf="cartaData.finesDeSemanaCont > 0" class="carta-feriados">
-      No incluye {{ cartaData.finesDeSemanaCont }} día(s) de fin de semana
+      Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
     </p>
     <div class="carta-fechas-row">
       <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
@@ -472,9 +530,12 @@
       </span>
       <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
         <span>Del <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al <span class="fecha-campo">{{ cartaData.fechaFin }}</span></span>
+        <span>Al <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
       </ng-container>
     </div>
+    <p *ngIf="cartaData.motivoExtension" class="carta-feriados">
+      Extensión ({{ cartaData.diasAdicionales }}) días, {{ cartaData.motivoExtension }}
+    </p>
     <p class="carta-sujeto">
       <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
     </p>
