@@ -186,7 +186,78 @@
   border: 1px solid #90a4b7;
 }
 
-/* Botones de estado en formulario edición */
+/* Extensión de días adicionales */
+.extension-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 8px;
+}
+
+.extension-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+}
+
+/* Toggle switch estilo iOS */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 26px;
+  transition: background 0.25s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: #28a745;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(22px);
+}
+
+.extension-row {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.req {
+  color: #dc3545;
+  font-size: 12px;
+}
 .estado-botones {
   display: flex;
   align-items: center;
@@ -314,7 +385,28 @@
   padding-top: 3px;
 }
 
-/* ─── ACCIONES ─── */
+/* ─── CARTA HRO HEADER ─── */
+.carta-hro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #000;
+  padding-bottom: 5px;
+  margin-bottom: 6px;
+}
+
+.carta-logo-img {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+.carta-hro-inst-right {
+  font-size: 7.5pt;
+  line-height: 1.4;
+  text-align: right;
+  color: #111;
+}
 .action-buttons {
   display: flex;
   gap: 4px;

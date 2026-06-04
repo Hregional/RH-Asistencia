@@ -434,6 +434,9 @@
               <th>Fecha Inicio</th>
               <th>Fecha Fin</th>
               <th>Días</th>
+              <th>Días Ext.</th>
+              <th>Fecha Fin Ext.</th>
+              <th>Motivo Ext.</th>
               <th>Estado</th>
               <th>Observaciones</th>
             </tr>
@@ -448,6 +451,9 @@
               <td>{{ p.fecha_inicio | date:'dd/MM/yyyy':'UTC' }}</td>
               <td>{{ p.fecha_fin | date:'dd/MM/yyyy':'UTC' }}</td>
               <td style="text-align:center">{{ p.dias_solicitados }}</td>
+              <td style="text-align:center">{{ p.dias_adicionales || '—' }}</td>
+              <td>{{ p.fecha_fin_extendida ? (p.fecha_fin_extendida | date:'dd/MM/yyyy':'UTC') : '—' }}</td>
+              <td>{{ p.motivo_extension || '—' }}</td>
               <td>
                 <span [ngClass]="{
                   'estado-presente': p.estado === 'AUTORIZADO',
