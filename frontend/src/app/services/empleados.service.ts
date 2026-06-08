@@ -13,10 +13,12 @@ export interface Empleado {
   numero_empleado: string;
   renglon?: string;
   nombre_completo: string;
+  dpi?: string | null;
   email: string;
   rol_id: number | null;
   area_id: number | null;
   activo: boolean;
+  datos_actualizados?: boolean | number;
   creado_en?: string;
   actualizado_en?: string;
 }
