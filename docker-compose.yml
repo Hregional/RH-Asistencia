@@ -1,14 +1,14 @@
 services:
   # --- Servicio de Base de Datos (MariaDB) ---
   db:
-    image: mariadb:10.4.32
+    image: mariadb:10.11
     container_name: biometrico_db
     restart: always
     environment:
       TZ: America/Guatemala
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD} # Contraseña root desde .env
-      MYSQL_DATABASE: sigsa_db # <-- CORREGIDO: Nombre de la DB que usa el backend
-      MYSQL_USER: sigsa_user # <-- CORREGIDO: Usuario que usa el backend
+      MYSQL_DATABASE: ${DB_NAME} # <-- MANEJADO DESDE .env
+      MYSQL_USER: ${DB_USER} # <-- MANEJADO DESDE .env
       MYSQL_PASSWORD: ${DB_PASSWORD} # Contraseña leída desde .env
     volumes:
       - mariadb_data:/var/lib/mysql
@@ -50,7 +50,7 @@ services:
       MYSQL_USER: root
       MYSQL_PASS: ${DB_ROOT_PASSWORD}
       # Puedes especificar 'sigsa_db' o dejarlo vacío para respaldar todas las BDs
-      MYSQL_DATABASE: sigsa_db
+      MYSQL_DATABASE: ${DB_NAME}
       # Programación en formato CRON (Ej: Todos los días a las 02:00 AM)
       CRON_TIME: "0 2 * * *"
       # Parámetros para un dump seguro en producción
@@ -58,7 +58,7 @@ services:
       # Retención: Borra automáticamente archivos más viejos de 2 semanas
       MAX_BACKUPS: 14
       # Formato del nombre del archivo resultante
-      BACKUP_SUFFIX: _sigsa_db
+      BACKUP_SUFFIX: _asistencia_db
     volumes:
       # Carpeta local en el host donde se guardarán los archivos .sql.gz
       - ./backups:/backup
@@ -82,9 +82,9 @@ services:
 
       # --- Variables de Base de Datos ---
       DB_HOST: db
-      DB_USER: sigsa_user
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: sigsa_db
+      DB_NAME: ${DB_NAME}
       DB_PORT: 3306
     env_file:
       - ./.env

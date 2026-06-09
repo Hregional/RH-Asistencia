@@ -62,7 +62,7 @@ DB_PASSWORD=tu_contraseña_segura
 DB_ROOT_PASSWORD=tu_contraseña_de_root_segura
 ```
 
-**Nota:** El archivo `Hospital.sql` se usará automáticamente para inicializar la base de datos `sigsa_db` la primera vez que se levante el contenedor.
+**Nota:** El archivo `Hospital.sql` se usará automáticamente para inicializar la base de datos (según se configure en el `.env`) la primera vez que se levante el contenedor.
 
 ### 2. Levantar los servicios
 
