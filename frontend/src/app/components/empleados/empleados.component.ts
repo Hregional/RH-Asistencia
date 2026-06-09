@@ -7,6 +7,7 @@ import { FormsModule, NgForm } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { environment } from "../../../environments/environment";
 import { firstValueFrom } from 'rxjs';
+import { cuiValido } from '../../utils/cui.util';
 
 type KeycloakLikeInfo = {
   preferred_username?: string;
@@ -64,8 +65,12 @@ export class EmpleadosComponent implements OnInit {
   serverErrors = {
     numeroDuplicado: false,
     nombreDuplicado: false,
-    emailDuplicado: false
+    emailDuplicado: false,
+    dpiDuplicado: false
   };
+
+  // Estado de validación DPI en tiempo real
+  dpiEstado: 'vacio' | 'invalido' | 'valido' = 'vacio';
 
   // Usuario y roles
   userInfo: KeycloakLikeInfo | null = null;
@@ -384,36 +389,38 @@ export class EmpleadosComponent implements OnInit {
   showCreateForm() {
     this.showForm = true;
     this.editingEmpleado = null;
-    this.serverErrors.numeroDuplicado = false;
-    this.serverErrors.nombreDuplicado = false;
-    this.serverErrors.emailDuplicado = false;
-    this.supervision = 'NINGUNO'; // Por defecto
+    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.supervision = 'NINGUNO';
+    this.dpiEstado = 'vacio';
 
     this.empleadofrorm = {
       numero_empleado: '',
       nombre_completo: '',
+      dpi: '',
       email: '',
       rol_id: 1,
       area_id: null,
-      activo: true
+      activo: true,
+      datos_actualizados: true
     } as any;
   }
 
   showEditForm(empleado: Empleado) {
     this.showForm = true;
     this.editingEmpleado = empleado;
-    this.serverErrors.numeroDuplicado = false;
-    this.serverErrors.nombreDuplicado = false;
-    this.serverErrors.emailDuplicado = false;
+    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
     this.empleadofrorm = { ...empleado };
     this.supervision = 'NINGUNO';
+    // Evaluar DPI existente al abrir edición
+    const dpi = empleado.dpi || '';
+    this.dpiEstado = !dpi ? 'vacio' : cuiValido(dpi) ? 'valido' : 'invalido';
   }
 
   cancelForm() {
     this.showForm = false;
     this.editingEmpleado = null;
-    this.serverErrors.numeroDuplicado = false;
-    this.serverErrors.nombreDuplicado = false;
+    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.dpiEstado = 'vacio';
   }
 
   // Sanitización inputs
@@ -424,9 +431,27 @@ export class EmpleadosComponent implements OnInit {
     this.empleadofrorm.numero_empleado = sanitized;
   }
 
+  onDpiInput(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    // Solo permitir dígitos, máximo 13
+    const sanitized = (input.value || '').replace(/\D+/g, '').substring(0, 13);
+    input.value = sanitized;
+    this.empleadofrorm.dpi = sanitized;
+    this.serverErrors.dpiDuplicado = false;
+
+    if (!sanitized) {
+      this.dpiEstado = 'vacio';
+    } else if (sanitized.length === 13) {
+      this.dpiEstado = cuiValido(sanitized) ? 'valido' : 'invalido';
+    } else {
+      this.dpiEstado = 'invalido'; // incompleto
+    }
+  }
+
   onNombreInput(ev: Event) {
     const input = ev.target as HTMLInputElement;
-    const sanitized = (input.value || '').replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+/g, '');
+    // Permitir letras, espacios, tildes, ñ y también apóstrofes/puntos que pueden aparecer en nombres
+    const sanitized = (input.value || '').substring(0, 100);
     input.value = sanitized;
     this.empleadofrorm.nombre_completo = sanitized;
   }
@@ -438,25 +463,36 @@ export class EmpleadosComponent implements OnInit {
     this.empleadofrorm.email = sanitized;
   }
 
-  clearServerError(field: 'numero' | 'nombre' | 'email') {
+  clearServerError(field: 'numero' | 'nombre' | 'email' | 'dpi') {
     if (field === 'numero') this.serverErrors.numeroDuplicado = false;
     if (field === 'nombre') this.serverErrors.nombreDuplicado = false;
     if (field === 'email') this.serverErrors.emailDuplicado = false;
+    if (field === 'dpi') this.serverErrors.dpiDuplicado = false;
   }
 
   // alias por si tu template llama en plural
-  clearServerErrors(field: 'numero' | 'nombre' | 'email') { this.clearServerError(field); }
+  clearServerErrors(field: 'numero' | 'nombre' | 'email' | 'dpi') { this.clearServerError(field); }
 
   // acepta opcionalmente el NgForm si lo envías desde el template
   async saveEmpleado(form?: NgForm) {
-    if (form && form.invalid) {
-      this.error = 'Por favor corrige los campos marcados.';
+    // Validación mínima tanto al crear como al editar
+    if (!this.empleadofrorm.nombre_completo?.trim()) {
+      this.error = 'El nombre completo es obligatorio.';
+      return;
+    }
+    if (!this.editingEmpleado && !this.empleadofrorm.numero_empleado?.trim()) {
+      this.error = 'El número de empleado es obligatorio.';
+      return;
+    }
+    // Si se ingresó DPI, debe ser válido
+    if (this.empleadofrorm.dpi && this.dpiEstado === 'invalido') {
+      this.error = 'El DPI ingresado no es válido.';
       return;
     }
 
     this.loading = true;
     this.error = null;
-    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false };
+    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
 
     try {
       // 1) Guardar empleado
@@ -508,6 +544,8 @@ export class EmpleadosComponent implements OnInit {
         const msg = (err.error?.error || '').toLowerCase();
         if (field === 'numero_empleado' || msg.includes('número de empleado') || msg.includes('numero de empleado')) {
           this.serverErrors.numeroDuplicado = true;
+        } else if (field === 'dpi' || msg.includes('dpi')) {
+          this.serverErrors.dpiDuplicado = true;
         } else if (field === 'nombre_completo' || msg.includes('nombre')) {
           this.serverErrors.nombreDuplicado = true;
         } else if (field === 'email' || msg.includes('correo')) {
@@ -516,7 +554,12 @@ export class EmpleadosComponent implements OnInit {
           this.error = err.error?.error || 'Registro duplicado';
         }
       } else if (err?.status === 400) {
-        this.error = err.error?.error || 'Datos inválidos';
+        const field = (err.error?.field || '').toString().toLowerCase();
+        if (field === 'dpi') {
+          this.error = err.error?.error || 'DPI inválido';
+        } else {
+          this.error = err.error?.error || 'Datos inválidos';
+        }
       } else {
         this.error = 'Error de conexión al servidor';
       }
@@ -578,5 +621,26 @@ export class EmpleadosComponent implements OnInit {
         console.error('Error:', err);
       }
     });
+  }
+
+  /** SI = datos actualizados, NO = pendiente. Color verde/rojo en la tabla */
+  getDatosActualizadosClass(emp: Empleado): string {
+    return emp.datos_actualizados ? 'datos-si' : 'datos-no';
+  }
+
+  getDatosActualizadosLabel(emp: Empleado): string {
+    return emp.datos_actualizados ? 'SÍ' : 'NO';
+  }
+
+  /**
+   * Período de actualización: enero 1 - febrero 15 del año en curso.
+   * Fuera de ese rango se muestra aviso informativo en la columna.
+   */
+  get esPeriodoActualizacion(): boolean {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const inicio = new Date(anio, 0, 1);   // 1 enero
+    const fin    = new Date(anio, 1, 15);  // 15 febrero
+    return hoy >= inicio && hoy <= fin; // PARA PRUEBAS DE FECHAS SOLO QUEDA return true;
   }
 }

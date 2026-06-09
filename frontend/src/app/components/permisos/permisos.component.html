@@ -42,12 +42,13 @@
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>Rol</th>
           <th>Área</th>
           <th>Tipo de Permiso</th>
           <th>Fecha de Inicio</th>
           <th>Fecha de Finalización</th>
           <th>Días Hábiles</th>
+          <th>Días Ext.</th>
+          <th>Fecha Fin Ext.</th>
           <th>Estado</th>
           <th>Acciones</th>
         </tr>
@@ -55,12 +56,13 @@
       <tbody>
         <tr *ngFor="let permiso of paginatedPermisos">
           <td>{{ permiso.nombre_completo }}</td>
-          <td>{{ permiso.rol_nombre || '—' }}</td>
           <td>{{ permiso.area_nombre || '—' }}</td>
           <td>{{ permiso.tipo_permiso_nombre || permiso.tipo_permiso_otro || '—' }}</td>
           <td>{{ permiso.fecha_inicio | date:'dd/MM/yyyy' }}</td>
           <td>{{ permiso.fecha_fin | date:'dd/MM/yyyy' }}</td>
           <td>{{ permiso.dias_solicitados }}</td>
+          <td>{{ permiso.dias_adicionales || '—' }}</td>
+          <td>{{ permiso.fecha_fin_extendida ? (permiso.fecha_fin_extendida | date:'dd/MM/yyyy') : '—' }}</td>
           <td>
             <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado, permiso)"
               [title]="permiso.observaciones || ''">
@@ -90,7 +92,7 @@
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
-          <td colspan="9" class="no-data">
+          <td colspan="10" class="no-data">
             {{ searchTerm ? 'No se encontraron coincidencias' : filtroEstado !== 'TODOS' ? 'No hay permisos con estado ' + filtroEstado : 'No hay permisos registrados' }}
           </td>
         </tr>
@@ -378,7 +380,8 @@
         </div>
         <div class="form-group form-group-small">
           <label>Días</label>
-          <input type="number" [(ngModel)]="tipoPermisoForm.dias_permitidos" min="1" max="365" />
+          <input type="number" [(ngModel)]="tipoPermisoForm.dias_permitidos" min="1" max="999"
+            oninput="if(this.value>999)this.value=999;if(this.value<1&&this.value!='')this.value=1;if(this.value.length>3)this.value=this.value.slice(0,3)" />
         </div>
         <div class="form-group">
           <label>Motivo del Permiso</label>

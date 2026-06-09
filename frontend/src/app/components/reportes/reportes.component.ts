@@ -62,6 +62,11 @@ export class ReportesComponent implements OnInit {
 
     this.fechaDesde = haceUnaSemana.toISOString().split('T')[0];
     this.fechaHasta = hoy.toISOString().split('T')[0];
+
+    // Inicializar mesSeleccionado al mes actual si está vacío
+    if (!this.mesSeleccionado) {
+      this.mesSeleccionado = hoy.toISOString().substring(0, 7);
+    }
   }
 
   obtenerNombreArea() {
@@ -148,7 +153,7 @@ export class ReportesComponent implements OnInit {
 
     const fechaGen = new Date().toLocaleDateString('es-GT');
     const nombreArea = this.obtenerNombreArea();
-    const rango = `${this.fechaDesde} al ${this.fechaHasta}`;
+    const rango = `${this.formatearFecha(this.fechaDesde)} al ${this.formatearFecha(this.fechaHasta)}`;
 
     const generarPDF = () => {
       // --- Encabezado ---
@@ -641,7 +646,7 @@ export class ReportesComponent implements OnInit {
       'ID': evento.id,
       'Empleado': evento.empleado || 'No identificado',
       'Tipo Evento': evento.tipo_evento,
-      'Fecha': evento.fecha,
+      'Fecha': this.formatearFecha(evento.fecha),
       'Hora': evento.hora,
       'Dispositivo IP': evento.dispositivo_ip || 'N/A',
       'Renglón Evento': evento.codigo_evento || 'N/A',
@@ -658,7 +663,7 @@ export class ReportesComponent implements OnInit {
     // Agregar encabezado con información del reporte
     const periodoInfo = this.diaEspecifico ?
       `Día: ${this.formatearFecha(this.diaEspecifico)}` :
-      `Mes: ${this.mesSeleccionado}`;
+      `Mes: ${this.mesSeleccionado.length === 7 ? (() => { const [y, m] = this.mesSeleccionado.split('-'); return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleDateString('es-GT', { month: 'long', year: 'numeric' }); })() : this.formatearFecha(this.mesSeleccionado)}`;
 
     const encabezado = [
       ['Hospital Regional de Occidente'],
@@ -952,7 +957,10 @@ export class ReportesComponent implements OnInit {
       if (this.diaEspecifico) {
         doc.text(`Día: ${this.formatearFecha(this.diaEspecifico)}`, 14, 38);
       } else {
-        doc.text(`Mes: ${this.mesSeleccionado}`, 14, 38);
+        const [y, m] = this.mesSeleccionado.split('-');
+        const nombreMes = new Date(parseInt(y), parseInt(m) - 1, 1)
+          .toLocaleDateString('es-GT', { month: 'long', year: 'numeric' });
+        doc.text(`Mes: ${nombreMes}`, 14, 38);
       }
 
       doc.text(`Total eventos: ${resumen.total}`, 90, 38);
@@ -1057,32 +1065,30 @@ export class ReportesComponent implements OnInit {
   formatearFecha(fechaString: string): string {
     if (!fechaString) return 'N/A';
 
-    // Pattern for DD-MM-YYYY or DD/MM/YYYY
-    const europeanDateRegex = /^(\d{2})[-/](\d{2})[-/](\d{4})/;
-    const match = fechaString.match(europeanDateRegex);
+    let dia: number, mes: number, anio: number;
 
-    let fecha;
+    // Ya viene en formato DD/MM/YYYY o DD-MM-YYYY
+    const euRegex = /^(\d{2})[-/](\d{2})[-/](\d{4})/;
+    const euMatch = fechaString.match(euRegex);
 
-    if (match) {
-      // If it matches DD-MM-YYYY, parse it manually
-      const day = parseInt(match[1], 10);
-      const month = parseInt(match[2], 10) - 1; // Month is 0-indexed
-      const year = parseInt(match[3], 10);
-      fecha = new Date(Date.UTC(year, month, day));
+    if (euMatch) {
+      dia  = parseInt(euMatch[1], 10);
+      mes  = parseInt(euMatch[2], 10);
+      anio = parseInt(euMatch[3], 10);
     } else {
-      // Otherwise, try to parse it as is (handles ISO format YYYY-MM-DD and full ISO strings)
-      const dateStringForParsing = /^\d{4}-\d{2}-\d{2}$/.test(fechaString)
-        ? `${fechaString}T00:00:00Z`
-        : fechaString;
-      fecha = new Date(dateStringForParsing);
+      // ISO YYYY-MM-DD o ISO con hora
+      const isoRegex = /^(\d{4})-(\d{2})-(\d{2})/;
+      const isoMatch = fechaString.match(isoRegex);
+      if (!isoMatch) return 'Fecha inválida';
+      anio = parseInt(isoMatch[1], 10);
+      mes  = parseInt(isoMatch[2], 10);
+      dia  = parseInt(isoMatch[3], 10);
     }
 
-    // Check if the created date is valid
-    if (isNaN(fecha.getTime())) {
-      return 'Fecha inválida';
-    }
+    if (isNaN(dia) || isNaN(mes) || isNaN(anio)) return 'Fecha inválida';
 
-    return fecha.toLocaleDateString('es-GT', { timeZone: 'UTC' });
+    // Siempre dd/MM/yyyy con ceros
+    return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${anio}`;
   }
 
   formatearHora(fechaHoraString: string): string {
@@ -1106,17 +1112,32 @@ export class ReportesComponent implements OnInit {
       if (this.tipoFiltroBiometricos === 'dia') {
         return `Día específico: ${this.formatearFecha(this.diaEspecifico)}`;
       } else if (this.tipoFiltroBiometricos === 'rango') {
-        return `Rango: ${this.formatearFecha(this.fechaDesde)} a ${this.formatearFecha(this.fechaHasta)}`;
+        return `${this.formatearFecha(this.fechaDesde)} al ${this.formatearFecha(this.fechaHasta)}`;
       } else if (this.tipoFiltroBiometricos === 'mes') {
         const [year, month] = this.mesSeleccionado.split('-');
         const fecha = new Date(parseInt(year), parseInt(month) - 1, 1);
-        return `Mes completo: ${fecha.toLocaleDateString('es-GT', { month: 'long', year: 'numeric' })}`;
+        return `Mes: ${fecha.toLocaleDateString('es-GT', { month: 'long', year: 'numeric' })}`;
       }
     }
 
+    // Reporte por mes completo (asistencia)
+    if (this.tipoReporte === 'mes' && this.mesSeleccionado) {
+      const [year, month] = this.mesSeleccionado.split('-').map(Number);
+      const diasMes = new Date(year, month, 0).getDate();
+      const desde = `${year}-${month.toString().padStart(2, '0')}-01`;
+      const hasta = `${year}-${month.toString().padStart(2, '0')}-${diasMes}`;
+      return `${this.formatearFecha(desde)} al ${this.formatearFecha(hasta)}`;
+    }
+
+    // Reporte por horarios
+    if (this.tipoReporte === 'horarios' && this.fechaDesde && this.fechaHasta) {
+      return `${this.formatearFecha(this.fechaDesde)} al ${this.formatearFecha(this.fechaHasta)}`;
+    }
+
+    // Reporte por semana
     if (!this.semanaSeleccionada) return 'Sin rango';
     const { desde, hasta } = this.semanaSeleccionada;
-    return `${this.formatearFecha(desde)} a ${this.formatearFecha(hasta)}`;
+    return `${this.formatearFecha(desde)} al ${this.formatearFecha(hasta)}`;
   }
 
   onAreaChange() {
@@ -1207,11 +1228,11 @@ export class ReportesComponent implements OnInit {
       'Área': p.area_nombre || 'N/A',
       'Cargo': p.rol_nombre || 'N/A',
       'Tipo Permiso': p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Otro',
-      'Fecha Inicio': p.fecha_inicio,
-      'Fecha Fin': p.fecha_fin,
+      'Fecha Inicio': this.formatearFecha(p.fecha_inicio),
+      'Fecha Fin': this.formatearFecha(p.fecha_fin),
       'Días': p.dias_solicitados,
       'Días Ext.': p.dias_adicionales || '',
-      'Fecha Fin Ext.': p.fecha_fin_extendida || '',
+      'Fecha Fin Ext.': p.fecha_fin_extendida ? this.formatearFecha(p.fecha_fin_extendida) : '',
       'Motivo Ext.': p.motivo_extension || '',
       'Estado': p.estado,
       'Observaciones': p.observaciones || ''
@@ -1239,7 +1260,7 @@ export class ReportesComponent implements OnInit {
       doc.text('Reporte de Permisos', 45, 23);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Período: ${this.fechaDesde} al ${this.fechaHasta}`, 14, 38);
+      doc.text(`Período: ${this.formatearFecha(this.fechaDesde)} al ${this.formatearFecha(this.fechaHasta)}`, 14, 38);
       doc.text(`Estado: ${this.estadoPermisoFiltro}`, 120, 38);
       doc.text(`Generado: ${fechaGen}`, 220, 38);
 
@@ -1262,11 +1283,11 @@ export class ReportesComponent implements OnInit {
           nombre: p.nombre_completo,
           area: p.area_nombre || 'N/A',
           tipo: p.tipo_permiso_nombre || p.tipo_permiso_otro || 'Otro',
-          inicio: p.fecha_inicio,
-          fin: p.fecha_fin,
+          inicio: this.formatearFecha(p.fecha_inicio),
+          fin: this.formatearFecha(p.fecha_fin),
           dias: p.dias_solicitados,
           diasExt: p.dias_adicionales || '—',
-          finExt: p.fecha_fin_extendida || '—',
+          finExt: p.fecha_fin_extendida ? this.formatearFecha(p.fecha_fin_extendida) : '—',
           motivoExt: p.motivo_extension || '—',
           estado: p.estado
         })),
