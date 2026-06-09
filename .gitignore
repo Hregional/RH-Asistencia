@@ -1,3 +1,4 @@
 .env
 .vscode/
 backups/
+Hospital.sql
