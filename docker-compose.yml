@@ -1,7 +1,7 @@
 services:
   # --- Servicio de Base de Datos (MariaDB) ---
   db:
-    image: mariadb:10.4.32
+    image: mariadb:10.11
     container_name: biometrico_db
     restart: always
     environment:
