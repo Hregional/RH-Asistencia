@@ -1,8 +1,7 @@
--- ============================================
--- MÓDULO DE PERMISOS
--- ============================================
+-- liquibase formatted sql
 
--- Tabla de tipos de permisos (catálogo)
+-- changeset adolfo:01_crear_modulo_permisos
+-- comment: Creación de tablas para el módulo de permisos
 CREATE TABLE IF NOT EXISTS `tipos_permiso` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `nombre` VARCHAR(100) NOT NULL,
@@ -15,7 +14,6 @@ CREATE TABLE IF NOT EXISTS `tipos_permiso` (
   UNIQUE KEY `uk_tipo_permiso_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla de solicitudes de permiso
 CREATE TABLE IF NOT EXISTS `permisos` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `empleado_id` INT NOT NULL,
@@ -27,6 +25,10 @@ CREATE TABLE IF NOT EXISTS `permisos` (
   `dias_solicitados` INT NOT NULL,
   `estado` ENUM('PENDIENTE', 'AUTORIZADO', 'RECHAZADO') NOT NULL DEFAULT 'PENDIENTE',
   `observaciones` TEXT NULL,
+  `firmas_config` LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Configuracion de firmas visibles en la carta' CHECK (json_valid(`firmas_config`)),
+  `dias_adicionales` INT NULL COMMENT 'Dias habiles adicionales de extension',
+  `motivo_extension` TEXT NULL COMMENT 'Motivo obligatorio para la extension',
+  `fecha_fin_extendida` DATE NULL COMMENT 'Fecha fin real incluyendo dias adicionales',
   `creado_en` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `actualizado_en` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `creado_por` INT NULL,
@@ -45,7 +47,6 @@ CREATE TABLE IF NOT EXISTS `permisos` (
   CONSTRAINT `fk_permiso_autorizado` FOREIGN KEY (`autorizado_por`) REFERENCES `usuarios_sistema` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insertar algunos tipos de permiso por defecto
 INSERT IGNORE INTO `tipos_permiso` (`nombre`, `dias_permitidos`, `mensaje_carta`) VALUES
 ('Vacaciones', 30, 'A cuenta de vacaciones del presente período'),
 ('Cumpleaños', 1, 'A razon de celebración de cumpleaños'),

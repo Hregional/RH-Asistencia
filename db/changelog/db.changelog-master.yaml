@@ -1,20 +1,8 @@
 databaseChangeLog:
-  - changeSet:
-      id: 001-modulo-permisos
-      author: copilot
-      changes:
-        - sqlFile:
-            path: migration_modulo_permisos.sql
-            relativeToChangelogFile: true
-            splitStatements: true
-            stripComments: false
+  - include:
+      file: ../migration_modulo_permisos.sql
+      relativeToChangelogFile: true
 
-  - changeSet:
-      id: 002-dpi-datos-actualizados
-      author: copilot
-      changes:
-        - sqlFile:
-            path: migration_dpi_datos_actualizados.sql
-            relativeToChangelogFile: true
-            splitStatements: true
-            stripComments: false
+  - include:
+      file: ../migration_dpi_datos_actualizados.sql
+      relativeToChangelogFile: true
