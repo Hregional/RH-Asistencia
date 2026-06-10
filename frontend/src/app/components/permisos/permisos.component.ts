@@ -19,7 +19,7 @@ import { CartaData, PermisosView, PopupObservaciones } from './permisos.types';
 @Component({
   selector: 'app-permisos',
   standalone: true,
-  imports: [CommonModule, FormsModule, PermisosListComponent, PermisosFormComponent, PermisosTiposComponent, PermisoCartaComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './permisos.component.html',
   styleUrls: ['./permisos.component.scss']
 })
@@ -346,10 +346,10 @@ export class PermisosComponent implements OnInit {
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
-        empleado:     parsed.empleado     ?? true,
-        jefeDepto:    parsed.jefeDepto    ?? true,
+        empleado: parsed.empleado ?? true,
+        jefeDepto: parsed.jefeDepto ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion:    parsed.direccion    ?? true
+        direccion: parsed.direccion ?? true
       };
     } else {
       this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true };
@@ -560,10 +560,10 @@ export class PermisosComponent implements OnInit {
         const ahora = new Date();
         const p2 = (n: number) => String(n).padStart(2, '0');
         const h = ahora.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
-        return `${p2(ahora.getDate())}/${p2(ahora.getMonth()+1)}/${ahora.getFullYear()} ${p2(h%12||12)}:${p2(ahora.getMinutes())} ${ampm}`;
+        return `${p2(ahora.getDate())}/${p2(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${p2(h % 12 || 12)}:${p2(ahora.getMinutes())} ${ampm}`;
       })(),
       fechaFinExtendida: this.solicitudForm.fecha_fin_extendida
-        ? (() => { const [y,m,d] = (this.solicitudForm.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        ? (() => { const [y, m, d] = (this.solicitudForm.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
         : '',
       motivoExtension: this.solicitudForm.motivo_extension || '',
       diasAdicionales: this.solicitudForm.dias_adicionales || null
@@ -931,7 +931,7 @@ export class PermisosComponent implements OnInit {
         return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth() + 1)}/${gt.getUTCFullYear()} ${p2(h % 12 || 12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
       })(),
       fechaFinExtendida: permiso.fecha_fin_extendida
-        ? (() => { const [y,m,d] = (permiso.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        ? (() => { const [y, m, d] = (permiso.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
         : '',
       motivoExtension: permiso.motivo_extension || '',
       diasAdicionales: permiso.dias_adicionales || null,
