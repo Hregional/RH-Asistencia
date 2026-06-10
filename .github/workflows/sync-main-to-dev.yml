@@ -1,0 +1,46 @@
+name: Sync Main to Dev
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# El flujo se dispara SOLO cuando hay un push (o merge) en la rama main
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Trae todo el historial para evitar errores de Git
+
+      - name: Configurar Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Crear rama de sincronización y Push
+        run: |
+          # Crear un nombre único para la rama usando el ID del workflow
+          BRANCH_NAME="sync/main-to-dev-${{ github.run_id }}"
+
+          git checkout main
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+
+          # Guardar el nombre de la rama para el siguiente paso
+          echo "SYNC_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Abrir Pull Request automáticamente
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "🔄 Auto-Sync: main a dev" \
+            --body "PR generado automáticamente para sincronizar el commit de squash de main en dev y evitar conflictos futuros." \
+            --base dev \
+            --head ${{ env.SYNC_BRANCH }}
