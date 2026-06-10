@@ -1,1 +1,1 @@
-ALTER TABLE sigsa_db.audit_log MODIFY COLUMN entidad varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
+ALTER TABLE audit_log MODIFY COLUMN entidad varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL;
