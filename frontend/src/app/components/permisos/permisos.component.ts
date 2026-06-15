@@ -596,6 +596,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
@@ -656,6 +662,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
