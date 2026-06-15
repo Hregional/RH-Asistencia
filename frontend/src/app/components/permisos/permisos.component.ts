@@ -621,6 +621,20 @@ export class PermisosComponent implements OnInit {
       }
     }
 
+    // Validar traslapes si se guarda como AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.solicitudForm.empleado_id!,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
     // Guardar directamente sin verificar turnos
     this.ejecutarGuardarSolicitud();
   }
@@ -687,6 +701,21 @@ export class PermisosComponent implements OnInit {
       }
     }
 
+    // Validar traslapes si se cambia a AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.editingPermiso!.empleado_id,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida,
+        this.editingPermiso!.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
     // Actualizar directamente sin verificar turnos
     this.ejecutarActualizarPermiso();
   }
@@ -726,6 +755,20 @@ export class PermisosComponent implements OnInit {
   }
 
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
+    if (estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        permiso.empleado_id,
+        permiso.fecha_inicio,
+        permiso.fecha_fin,
+        permiso.fecha_fin_extendida,
+        permiso.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        setTimeout(() => this.error = null, 5000);
+        return;
+      }
+    }
     this.ejecutarCambioEstado(permiso, estado);
   }
 
@@ -1003,5 +1046,22 @@ export class PermisosComponent implements OnInit {
         ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
         : String(permiso.fecha_fin).substring(0, 10);
     return hoy > finEfectivo;
+  }
+
+  private hayTraslapeLocal(empleado_id: number, inicio: string, fin: string, finExt?: string | null, excludeId?: number): boolean {
+    const newS = inicio.substring(0, 10);
+    const newE = (finExt || fin).substring(0, 10);
+
+    return this.permisos.some(p => {
+      if (p.empleado_id !== empleado_id) return false;
+      if (p.estado !== 'AUTORIZADO') return false;
+      if (excludeId && p.id === excludeId) return false;
+
+      const oldS = String(p.fecha_inicio).substring(0, 10);
+      const oldE = String(p.fecha_fin_extendida || p.fecha_fin).substring(0, 10);
+
+      // Overlap: S1 <= E2 AND S2 <= E1
+      return newS <= oldE && oldS <= newE;
+    });
   }
 }

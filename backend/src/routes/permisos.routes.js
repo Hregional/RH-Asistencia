@@ -246,6 +246,19 @@ class PermisosModel {
     return this.getById(id);
   }
 
+  static async hayTraslape(empleado_id, fecha_inicio, fecha_fin, fecha_fin_extendida = null, excludeId = null) {
+    const finEfectivo = fecha_fin_extendida || fecha_fin;
+    const [rows] = await db.query(`
+      SELECT id FROM permisos
+      WHERE empleado_id = ?
+        AND estado = 'AUTORIZADO'
+        AND id != ?
+        AND fecha_inicio <= ?
+        AND COALESCE(fecha_fin_extendida, fecha_fin) >= ?
+    `, [empleado_id, excludeId || -1, finEfectivo, fecha_inicio]);
+    return rows.length > 0;
+  }
+
   static async delete(id) {
     const [result] = await db.query(`DELETE FROM permisos WHERE id = ?`, [id]);
     if (result.affectedRows === 0) throw new Error('Permiso no encontrado');
@@ -382,6 +395,19 @@ class PermisosController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      // Verificar traslapes si se crea como AUTORIZADO
+      if (data.estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          data.empleado_id, data.fecha_inicio, data.fecha_fin, data.fecha_fin_extendida
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
+
       // Pasar el ID del usuario logueado como creado_por
       data.creado_por = req.actorId ?? null;
 
@@ -401,6 +427,23 @@ class PermisosController {
 
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });
+
+      // Verificar traslapes si se cambia a AUTORIZADO o si ya estaba AUTORIZADO y cambiaron las fechas
+      if (data.estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          antes.empleado_id, 
+          data.fecha_inicio || antes.fecha_inicio, 
+          data.fecha_fin || antes.fecha_fin, 
+          data.fecha_fin_extendida || antes.fecha_fin_extendida,
+          id
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
 
       const actualizado = await PermisosModel.update(id, data);
       await audit({ evento: 'UPDATE', entidad: 'permisos', entidad_id: id, antes, despues: actualizado, req });
@@ -422,6 +465,19 @@ class PermisosController {
 
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });
+
+      // Verificar traslapes si se cambia a AUTORIZADO
+      if (estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          antes.empleado_id, antes.fecha_inicio, antes.fecha_fin, antes.fecha_fin_extendida, id
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
 
       const actualizado = await PermisosModel.updateEstado(id, estado, req.actorId ?? null);
       await audit({ evento: 'UPDATE', entidad: 'permisos', entidad_id: id, antes, despues: actualizado, req });
