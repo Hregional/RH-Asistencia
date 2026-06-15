@@ -904,7 +904,7 @@ export class PermisosComponent implements OnInit {
     .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
     .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
     .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
+    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:12pt; }
     .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
     .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
     .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
