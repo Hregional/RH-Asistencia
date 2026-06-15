@@ -104,6 +104,12 @@ export class PermisosComponent implements OnInit {
     return tipo?.dias_permitidos === 1;
   }
 
+  /** True cuando el tipo seleccionado es Vacaciones */
+  get esVacaciones(): boolean {
+    const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
+    return tipo?.nombre.toLowerCase() === 'vacaciones';
+  }
+
   // Carta preview
   cartaData: CartaData = this.initCartaData();
 
@@ -545,7 +551,7 @@ export class PermisosComponent implements OnInit {
         : (tipo?.nombre || ''),
       mensaje: this.solicitudForm.tipo_permiso_id === -1
         ? (this.solicitudForm.mensaje_otro || '')
-        : (tipo?.mensaje_carta || ''),
+        : (tipo?.mensaje_carta || '') + (this.solicitudForm.mensaje_otro ? ' ' + this.solicitudForm.mensaje_otro : ''),
       fechaInicio: fmtFecha(this.solicitudForm.fecha_inicio || ''),
       fechaFin: fmtFecha(this.solicitudForm.fecha_fin || ''),
       diasSolicitados: dias,
@@ -620,7 +626,6 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
@@ -681,7 +686,6 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
@@ -908,7 +912,9 @@ export class PermisosComponent implements OnInit {
       mes: meses[fechaCarta.getMonth()],
       anio: String(fechaCarta.getFullYear()),
       tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
-      mensaje: permiso.tipo_permiso_id ? (tipo?.mensaje_carta || '') : (permiso.mensaje_otro || ''),
+      mensaje: permiso.tipo_permiso_id 
+        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '') 
+        : (permiso.mensaje_otro || ''),
       fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
       diasSolicitados: dias,

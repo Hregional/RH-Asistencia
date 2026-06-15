@@ -160,6 +160,18 @@
       </div>
     </ng-container>
 
+    <!-- Descripción adicional para tipos regulares -->
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1 && empleadoSeleccionado">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Descripción adicional (Opcional)</label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" 
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" 
+            maxlength="100" style="min-height:38px;"></textarea>
+        </div>
+      </div>
+    </ng-container>
+
     <!-- Fechas con calendarios -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && empleadoSeleccionado">
       <div class="form-row">
@@ -273,6 +285,18 @@
           <label>Motivo del Permiso</label>
           <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="50" required
             style="min-height:38px;"></textarea>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Descripción adicional para tipos regulares (editar) -->
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Descripción adicional (Opcional)</label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" 
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" 
+            maxlength="100" style="min-height:38px;"></textarea>
         </div>
       </div>
     </ng-container>
