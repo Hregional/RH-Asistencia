@@ -104,6 +104,12 @@ export class PermisosComponent implements OnInit {
     return tipo?.dias_permitidos === 1;
   }
 
+  /** True cuando el tipo seleccionado es Vacaciones */
+  get esVacaciones(): boolean {
+    const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
+    return tipo?.nombre.toLowerCase() === 'vacaciones';
+  }
+
   // Carta preview
   cartaData: CartaData = this.initCartaData();
 
@@ -545,7 +551,7 @@ export class PermisosComponent implements OnInit {
         : (tipo?.nombre || ''),
       mensaje: this.solicitudForm.tipo_permiso_id === -1
         ? (this.solicitudForm.mensaje_otro || '')
-        : (tipo?.mensaje_carta || ''),
+        : (tipo?.mensaje_carta || '') + (this.solicitudForm.mensaje_otro ? ' ' + this.solicitudForm.mensaje_otro : ''),
       fechaInicio: fmtFecha(this.solicitudForm.fecha_inicio || ''),
       fechaFin: fmtFecha(this.solicitudForm.fecha_fin || ''),
       diasSolicitados: dias,
@@ -590,6 +596,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
@@ -609,6 +621,20 @@ export class PermisosComponent implements OnInit {
       }
     }
 
+    // Validar traslapes si se guarda como AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.solicitudForm.empleado_id!,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
     // Guardar directamente sin verificar turnos
     this.ejecutarGuardarSolicitud();
   }
@@ -620,7 +646,6 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
@@ -651,6 +676,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
@@ -670,6 +701,21 @@ export class PermisosComponent implements OnInit {
       }
     }
 
+    // Validar traslapes si se cambia a AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.editingPermiso!.empleado_id,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida,
+        this.editingPermiso!.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
     // Actualizar directamente sin verificar turnos
     this.ejecutarActualizarPermiso();
   }
@@ -681,7 +727,6 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
@@ -710,6 +755,20 @@ export class PermisosComponent implements OnInit {
   }
 
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
+    if (estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        permiso.empleado_id,
+        permiso.fecha_inicio,
+        permiso.fecha_fin,
+        permiso.fecha_fin_extendida,
+        permiso.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        setTimeout(() => this.error = null, 5000);
+        return;
+      }
+    }
     this.ejecutarCambioEstado(permiso, estado);
   }
 
@@ -845,7 +904,7 @@ export class PermisosComponent implements OnInit {
     .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
     .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
     .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
+    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:12pt; }
     .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
     .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
     .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
@@ -908,7 +967,9 @@ export class PermisosComponent implements OnInit {
       mes: meses[fechaCarta.getMonth()],
       anio: String(fechaCarta.getFullYear()),
       tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
-      mensaje: permiso.tipo_permiso_id ? (tipo?.mensaje_carta || '') : (permiso.mensaje_otro || ''),
+      mensaje: permiso.tipo_permiso_id 
+        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '') 
+        : (permiso.mensaje_otro || ''),
       fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
       diasSolicitados: dias,
@@ -985,5 +1046,22 @@ export class PermisosComponent implements OnInit {
         ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
         : String(permiso.fecha_fin).substring(0, 10);
     return hoy > finEfectivo;
+  }
+
+  private hayTraslapeLocal(empleado_id: number, inicio: string, fin: string, finExt?: string | null, excludeId?: number): boolean {
+    const newS = inicio.substring(0, 10);
+    const newE = (finExt || fin).substring(0, 10);
+
+    return this.permisos.some(p => {
+      if (p.empleado_id !== empleado_id) return false;
+      if (p.estado !== 'AUTORIZADO') return false;
+      if (excludeId && p.id === excludeId) return false;
+
+      const oldS = String(p.fecha_inicio).substring(0, 10);
+      const oldE = String(p.fecha_fin_extendida || p.fecha_fin).substring(0, 10);
+
+      // Overlap: S1 <= E2 AND S2 <= E1
+      return newS <= oldE && oldS <= newE;
+    });
   }
 }

@@ -72,28 +72,27 @@
           </td>
           <td class="action-buttons">
             <ng-container *ngIf="!yaFinalizo(permiso)">
-              <button *ngIf="permiso.estado !== 'AUTORIZADO'"
-                class="btn btn-success btn-small" (click)="cambiarEstado(permiso, 'AUTORIZADO')">
+              <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small"
+                (click)="cambiarEstado(permiso, 'AUTORIZADO')">
                 Autorizar
               </button>
-              <button *ngIf="permiso.estado === 'AUTORIZADO'"
-                class="btn btn-danger btn-small" (click)="cambiarEstado(permiso, 'RECHAZADO')">
+              <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small"
+                (click)="cambiarEstado(permiso, 'RECHAZADO')">
                 Rechazar
               </button>
               <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
             </ng-container>
             <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
-            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)"
-              class="btn btn-secondary btn-small"
+            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)" class="btn btn-secondary btn-small"
               (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
-            <button *ngIf="permiso.estado === 'AUTORIZADO'"
-              class="btn btn-secondary btn-small"
+            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
               (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
           <td colspan="10" class="no-data">
-            {{ searchTerm ? 'No se encontraron coincidencias' : filtroEstado !== 'TODOS' ? 'No hay permisos con estado ' + filtroEstado : 'No hay permisos registrados' }}
+            {{ searchTerm ? 'No se encontraron coincidencias' : filtroEstado !== 'TODOS' ? 'No hay permisos con estado '
+            + filtroEstado : 'No hay permisos registrados' }}
           </td>
         </tr>
       </tbody>
@@ -103,7 +102,8 @@
     <div class="pagination-controls" *ngIf="filteredPermisos.length > itemsPerPage">
       <button class="btn btn-secondary btn-small" (click)="prevPage()" [disabled]="currentPage === 1">Anterior</button>
       <span class="pagination-info">Página {{ currentPage }} de {{ totalPages }}</span>
-      <button class="btn btn-secondary btn-small" (click)="nextPage()" [disabled]="currentPage === totalPages">Siguiente</button>
+      <button class="btn btn-secondary btn-small" (click)="nextPage()"
+        [disabled]="currentPage === totalPages">Siguiente</button>
     </div>
   </div>
 
@@ -160,6 +160,19 @@
       </div>
     </ng-container>
 
+    <!-- Descripción adicional para tipos regulares -->
+    <ng-container
+      *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1 && empleadoSeleccionado">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Descripción adicional (Obligatorio)</label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" maxlength="100"
+            style="min-height:38px;"></textarea>
+        </div>
+      </div>
+    </ng-container>
+
     <!-- Fechas con calendarios -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && empleadoSeleccionado">
       <div class="form-row">
@@ -188,17 +201,22 @@
         <div class="form-group firmas-check-group">
           <label>Firmas en carta</label>
           <div class="firmas-checks">
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()"> Empleado</label>
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()"> Jefe Depto.</label>
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal" (change)="actualizarCarta()"> Jefe Personal</label>
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()"> Dirección</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado"
+                (change)="actualizarCarta()"> Empleado</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
+                (change)="actualizarCarta()"> Jefe Depto.</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
+                (change)="actualizarCarta()"> Jefe Personal</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion"
+                (change)="actualizarCarta()"> Dirección</label>
           </div>
         </div>
       </div>
     </ng-container>
 
     <!-- Extensión de días adicionales — visible cuando hay empleado Y tipo seleccionado -->
-    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+    <ng-container
+      *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Días adicionales</span>
         <label class="toggle-switch">
@@ -215,7 +233,9 @@
           </div>
           <div class="form-group form-group-small">
             <label>Fecha fin extendida</label>
-            <input type="text" [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'" readonly style="background:#e9ecef;" />
+            <input type="text"
+              [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'"
+              readonly style="background:#e9ecef;" />
           </div>
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
@@ -277,6 +297,18 @@
       </div>
     </ng-container>
 
+    <!-- Descripción adicional para tipos regulares (editar) -->
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Descripción adicional {{ esVacaciones ? '*' : '(Opcional)' }}</label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" 
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" 
+            maxlength="100" style="min-height:38px;"></textarea>
+        </div>
+      </div>
+    </ng-container>
+
     <!-- Calendarios para controlar días hábiles -->
     <div class="form-row">
       <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
@@ -302,10 +334,14 @@
       <div class="form-group firmas-check-group">
         <label>Firmas en carta</label>
         <div class="firmas-checks">
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()"> Empleado</label>
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()"> Jefe Depto.</label>
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal" (change)="actualizarCarta()"> Jefe Personal</label>
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()"> Dirección</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()">
+            Empleado</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
+            Jefe Depto.</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
+              (change)="actualizarCarta()"> Jefe Personal</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()">
+            Dirección</label>
         </div>
       </div>
     </div>
@@ -328,7 +364,9 @@
           </div>
           <div class="form-group form-group-small">
             <label>Fecha fin extendida</label>
-            <input type="text" [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'" readonly style="background:#e9ecef;" />
+            <input type="text"
+              [value]="solicitudForm.fecha_fin_extendida ? (solicitudForm.fecha_fin_extendida | date:'dd/MM/yyyy') : '—'"
+              readonly style="background:#e9ecef;" />
           </div>
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
@@ -350,8 +388,8 @@
       </div>
       <div class="form-group">
         <label>Observaciones</label>
-        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
-          maxlength="75" style="min-height:38px;"></textarea>
+        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales" maxlength="75"
+          style="min-height:38px;"></textarea>
       </div>
     </div>
 
@@ -417,8 +455,8 @@
             <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
             <td class="action-buttons">
               <button class="btn btn-primary btn-small" (click)="editarTipoPermiso(tipo)">Editar</button>
-              <button *ngIf="tipo.nombre.toLowerCase() !== 'vacaciones'"
-                class="btn btn-danger btn-small" (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
+              <button *ngIf="tipo.nombre.toLowerCase() !== 'vacaciones'" class="btn btn-danger btn-small"
+                (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
             </td>
           </tr>
           <tr *ngIf="tiposPermiso.length === 0">
@@ -453,7 +491,8 @@
   </div>
 </div>
 <!-- Contenedor oculto para impresión directa desde tabla -->
-<div data-print-container style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;" *ngIf="imprimiendoDesdeTabla">
+<div data-print-container style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;"
+  *ngIf="imprimiendoDesdeTabla">
   <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
 </div>
 

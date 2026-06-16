@@ -34,6 +34,7 @@ export class PermisosFormComponent {
     @Output() calcularDias = new EventEmitter<void>();
     @Output() guardarSolicitud = new EventEmitter<void>();
     @Output() actualizarPermiso = new EventEmitter<void>();
+    @Output() updateCarta = new EventEmitter<void>();
     @Output() volver = new EventEmitter<void>();
     @Output() estadoChange = new EventEmitter<'AUTORIZADO' | 'RECHAZADO' | 'PENDIENTE'>();
 }
