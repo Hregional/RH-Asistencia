@@ -59,7 +59,8 @@ export class PermisosComponent implements OnInit {
     empleado: true,
     jefeDepto: true,
     jefePersonal: true,
-    direccion: true
+    direccion: true,
+    oficioRH: true
   };
 
   // Extensión de días adicionales
@@ -355,10 +356,11 @@ export class PermisosComponent implements OnInit {
         empleado: parsed.empleado ?? true,
         jefeDepto: parsed.jefeDepto ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion: parsed.direccion ?? true
+        direccion: parsed.direccion ?? true,
+        oficioRH: parsed.oficioRH ?? true
       };
     } else {
-      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true };
+      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
     }
   }
 

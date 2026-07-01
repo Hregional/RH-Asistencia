@@ -209,6 +209,8 @@
                 (change)="actualizarCarta()"> Jefe Personal</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion"
                 (change)="actualizarCarta()"> Dirección</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.oficioRH"
+                (change)="actualizarCarta()"> Of. RR.HH.</label>
           </div>
         </div>
       </div>
@@ -342,6 +344,8 @@
               (change)="actualizarCarta()"> Jefe Personal</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()">
             Dirección</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.oficioRH" (change)="actualizarCarta()">
+            Of. RR.HH.</label>
         </div>
       </div>
     </div>
@@ -504,6 +508,9 @@
       <ng-container *ngTemplateOutlet="cartaCuerpo"></ng-container>
     </div>
 
+    <!-- ── Separador punteado ── -->
+    <div class="carta-separador">✂</div>
+
     <!-- ── COPIA 2 ── -->
     <div class="carta-copia-bloque">
       <ng-container *ngTemplateOutlet="cartaCuerpo"></ng-container>
@@ -602,6 +609,11 @@
       <div class="firma-linea"></div>
       <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
       <span class="firma-sub">Y/O SUBDIRECCIÓN</span>
+    </div>
+    <div class="firma-bloque" *ngIf="firmas.oficioRH">
+      <div class="firma-linea"></div>
+      <span class="firma-label">OFICINA DE RECURSOS HUMANOS</span>
+      <span class="firma-sub">Firma y Sello</span>
     </div>
   </div>
 </ng-template>
