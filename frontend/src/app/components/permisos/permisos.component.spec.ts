@@ -42,7 +42,7 @@ describe('PermisosComponent', () => {
         component.filtroEstado = 'AUTORIZADO';
         component.searchTerm = 'maria';
 
-        expect(component.filteredPermisos).toHaveLength(1);
+        expect(component.filteredPermisos.length).toBe(1);
         expect(component.filteredPermisos[0].nombre_completo).toBe('María López');
     });
 
@@ -88,7 +88,7 @@ describe('PermisosComponent', () => {
 
         component.onEmpleadoBusqueda();
 
-        expect(component.empleadosFiltrados).toHaveLength(1);
+        expect(component.empleadosFiltrados.length).toBe(1);
         expect(component.empleadosFiltrados[0].nombre_completo).toBe('José Pérez');
     });
 

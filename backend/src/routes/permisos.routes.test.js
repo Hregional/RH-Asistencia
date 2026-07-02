@@ -1,31 +1,30 @@
 import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createRequire } from 'node:module';
 
+process.env.KEYCLOAK_ISSUER = process.env.KEYCLOAK_ISSUER || 'http://localhost/test';
+process.env.KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || 'test';
+
+const require = createRequire(import.meta.url);
 const dbQuery = vi.fn();
 const auditMock = vi.fn();
 const requireAuthMock = vi.fn((_req, _res, next) => next());
 const ensureActorMock = vi.fn((_req, _res, next) => next());
 
-vi.mock('../db.js', () => ({
-    default: { query: dbQuery },
-    query: dbQuery
-}));
+const dbPath = require.resolve('../db.js');
+const auditPath = require.resolve('../utils/audit.js');
+const authPath = require.resolve('../middlewares/auth.js');
+const actorPath = require.resolve('../middlewares/actor.js');
 
-vi.mock('../utils/audit.js', () => ({
-    audit: auditMock
-}));
-
-vi.mock('../middlewares/auth.js', () => ({
-    requireAuth: requireAuthMock
-}));
-
-vi.mock('../middlewares/actor.js', () => ({
-    ensureActor: ensureActorMock
-}));
+require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: { query: dbQuery } };
+require.cache[auditPath] = { id: auditPath, filename: auditPath, loaded: true, exports: { audit: auditMock } };
+require.cache[authPath] = { id: authPath, filename: authPath, loaded: true, exports: { requireAuth: requireAuthMock } };
+require.cache[actorPath] = { id: actorPath, filename: actorPath, loaded: true, exports: { ensureActor: ensureActorMock } };
 
 async function createApp() {
-    const { default: permisosRouter } = await import('./permisos.routes.js');
+    delete require.cache[require.resolve('./permisos.routes.js')];
+    const permisosRouter = require('./permisos.routes.js');
     const app = express();
     app.use(express.json());
     app.use('/permisos', permisosRouter);
