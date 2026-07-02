@@ -71,22 +71,24 @@
             <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
           </td>
           <td class="action-buttons">
-            <ng-container *ngIf="!yaFinalizo(permiso)">
-              <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small"
-                (click)="cambiarEstado(permiso, 'AUTORIZADO')">
-                Autorizar
-              </button>
-              <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small"
-                (click)="cambiarEstado(permiso, 'RECHAZADO')">
-                Rechazar
-              </button>
-              <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
-            </ng-container>
-            <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
-            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)" class="btn btn-secondary btn-small"
-              (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
-            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
-              (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
+            <!-- Autorizar: cuando no está AUTORIZADO -->
+            <button *ngIf="permiso.estado !== 'AUTORIZADO'"
+              class="btn btn-success btn-small" title="Autorizar"
+              (click)="cambiarEstado(permiso, 'AUTORIZADO')">✔</button>
+            <!-- Rechazar: solo cuando está AUTORIZADO -->
+            <button *ngIf="permiso.estado === 'AUTORIZADO'"
+              class="btn btn-danger btn-small" title="Rechazar"
+              (click)="cambiarEstado(permiso, 'RECHAZADO')">✖</button>
+            <!-- Editar: siempre -->
+            <button class="btn btn-primary btn-small" title="Editar"
+              (click)="irAEditarPermiso(permiso)">✏️</button>
+            <!-- Imprimir: siempre disponible según estado -->
+            <button *ngIf="permiso.estado !== 'AUTORIZADO'"
+              class="btn btn-secondary btn-small" title="Imprimir"
+              (click)="imprimirPermisoDirecto(permiso)">🖨️</button>
+            <button *ngIf="permiso.estado === 'AUTORIZADO'"
+              class="btn btn-secondary btn-small" title="Reimprimir"
+              (click)="imprimirPermisoDirecto(permiso)">🖨️</button>
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
@@ -230,7 +232,8 @@
         <div class="form-row extension-row">
           <div class="form-group form-group-small">
             <label>Días adicionales</label>
-            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" min="1" max="30"
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales"
+              max="30" placeholder="1-30"
               (ngModelChange)="onDiasAdicionalesChange($event)" />
           </div>
           <div class="form-group form-group-small">
@@ -363,7 +366,8 @@
         <div class="form-row extension-row">
           <div class="form-group form-group-small">
             <label>Días adicionales</label>
-            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" min="1" max="30"
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales"
+              max="30" placeholder="1-30"
               (ngModelChange)="onDiasAdicionalesChange($event)" />
           </div>
           <div class="form-group form-group-small">

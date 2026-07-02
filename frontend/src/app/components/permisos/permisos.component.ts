@@ -314,11 +314,16 @@ export class PermisosComponent implements OnInit {
   }
 
   onDiasAdicionalesChange(valor: any): void {
-    // Normalizar: null, vacío o fuera de rango
-    let dias = Number(valor);
-    if (isNaN(dias) || dias < 1) dias = 1;
-    if (dias > 30) dias = 30;
-    this.solicitudForm.dias_adicionales = dias;
+    const dias = Number(valor);
+    // Si está vacío, cero o inválido, limpiar — no forzar a 1
+    if (!valor || isNaN(dias) || dias <= 0) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+      return;
+    }
+    const clamped = Math.min(Math.max(Math.floor(dias), 1), 30);
+    this.solicitudForm.dias_adicionales = clamped;
     this.calcularFechaFinExtendida();
   }
 
