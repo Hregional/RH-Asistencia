@@ -62,14 +62,4 @@ export class PermisosListComponent {
         event.stopPropagation();
         this.mostrarObservaciones.emit({ event, permiso });
     }
-
-    formatearArea(area: string | null | undefined): string {
-        const texto = (area || '—').trim();
-        if (texto === '—') return texto;
-
-        const palabras = texto.split(/\s+/).filter(Boolean);
-        if (palabras.length <= 10) return texto;
-
-        return `${palabras.slice(0, 10).join(' ')}\n${palabras.slice(10).join(' ')}`;
-    }
 }
