@@ -1,0 +1,187 @@
+<ng-container *ngIf="cartaData as carta">
+    <div class="carta-hoja">
+
+        <!-- ── COPIA 1 ── -->
+        <div class="carta-copia-bloque">
+            <div class="carta-hro-header">
+                <div class="carta-hro-logo-left">
+                    <img src="assets/Permisos-MSPAS.png" alt="MSPAS" class="carta-logo-img" />
+                </div>
+                <div class="carta-hro-logo-right">
+                    <img src="assets/Permisos-MSPAS-2.jpg" alt="MSPAS2" class="carta-logo-img" />
+                </div>
+            </div>
+
+            <div class="carta-hro-fecha-line">
+                QUETZALTENANGO
+                <span class="fecha-campo">{{ carta.dia }}</span> DE
+                <span class="fecha-campo fecha-mes">{{ carta.mes }}</span>
+                DE
+                <span class="fecha-campo">{{ carta.anio }}</span>
+            </div>
+
+            <div class="carta-meta-impresion">
+                <span *ngIf="carta.autorizadoPor || carta.creadoPor || carta.autorizadoEn">
+                    Generado por: <strong>{{ carta.autorizadoPor || carta.creadoPor || '—' }}</strong>
+                    <ng-container *ngIf="carta.autorizadoEn"> — {{ carta.autorizadoEn }}</ng-container>
+                </span>
+                <span>Impreso: {{ carta.fechaHoraImpresion }}</span>
+            </div>
+
+            <div class="carta-hro-destinatario">
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() === 'vacaciones'">
+                    Señor Director: <strong>Hospital Regional de Occidente</strong> Su Despacho
+                </ng-container>
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() !== 'vacaciones'">
+                    Señores: <strong>Recursos Humanos</strong> Hospital Regional de Occidente Su Despacho
+                </ng-container>
+            </div>
+
+            <div class="carta-hro-body">
+                <p class="carta-solicitud-line">
+                    Atentamente me dirijo a usted, Yo. <strong>{{ carta.nombreEmpleado | uppercase }}</strong>,
+                    para solicitarle se sirva autorizarme:
+                    <span class="carta-underline dias-autorizacion">
+                        <strong>{{ carta.diasEnLetras }} ({{ carta.diasSolicitados }}) DÍAS HÁBILES</strong>
+                    </span>
+                </p>
+                <p class="carta-tipo-permiso">
+                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase }}</strong></span>
+                </p>
+                <p class="carta-mensaje">{{ carta.mensaje }}</p>
+                <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
+                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
+                </p>
+                <div class="carta-fechas-row">
+                    <span *ngIf="carta.fechaInicio === carta.fechaFin">
+                        Fecha: <span class="fecha-campo">{{ carta.fechaInicio }}</span>
+                    </span>
+                    <ng-container *ngIf="carta.fechaInicio !== carta.fechaFin">
+                        <span>Del <span class="fecha-campo">{{ carta.fechaInicio }}</span></span>
+                        <span>Al <span class="fecha-campo">{{ carta.fechaFinExtendida || carta.fechaFin }}</span></span>
+                    </ng-container>
+                </div>
+                <p *ngIf="carta.motivoExtension" class="carta-feriados">
+                    Extensión: {{ carta.motivoExtension }}
+                </p>
+                <p class="carta-sujeto">
+                    <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
+                </p>
+                <p class="carta-atentamente">Atentamente,</p>
+            </div>
+
+            <div class="carta-hro-firmas">
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <strong>{{ carta.nombreEmpleado | uppercase }}</strong>
+                    <span class="firma-label">{{ carta.rol | uppercase }}</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">JEFE DE DEPARTAMENTO</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">JEFE DE PERSONAL</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
+                    <span class="firma-sub">Y/O SUBDIRECCIÓN</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── COPIA 2 ── -->
+        <div class="carta-copia-bloque">
+            <div class="carta-hro-header">
+                <div class="carta-hro-logo-left">
+                    <img src="assets/Permisos-MSPAS.png" alt="MSPAS" class="carta-logo-img" />
+                </div>
+                <div class="carta-hro-logo-right">
+                    <img src="assets/Permisos-MSPAS-2.jpg" alt="MSPAS2" class="carta-logo-img" />
+                </div>
+            </div>
+
+            <div class="carta-hro-fecha-line">
+                QUETZALTENANGO
+                <span class="fecha-campo">{{ carta.dia }}</span> DE
+                <span class="fecha-campo fecha-mes">{{ carta.mes }}</span>
+                DE
+                <span class="fecha-campo">{{ carta.anio }}</span>
+            </div>
+
+            <div class="carta-meta-impresion">
+                <span *ngIf="carta.autorizadoPor || carta.creadoPor || carta.autorizadoEn">
+                    Generado por: <strong>{{ carta.autorizadoPor || carta.creadoPor || '—' }}</strong>
+                    <ng-container *ngIf="carta.autorizadoEn"> — {{ carta.autorizadoEn }}</ng-container>
+                </span>
+                <span>Impreso: {{ carta.fechaHoraImpresion }}</span>
+            </div>
+
+            <div class="carta-hro-destinatario">
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() === 'vacaciones'">
+                    Señor Director: <strong>Hospital Regional de Occidente</strong> Su Despacho
+                </ng-container>
+                <ng-container *ngIf="carta.tipoPermiso.toLowerCase() !== 'vacaciones'">
+                    Señores: <strong>Recursos Humanos</strong> Hospital Regional de Occidente Su Despacho
+                </ng-container>
+            </div>
+
+            <div class="carta-hro-body">
+                <p class="carta-solicitud-line">
+                    Atentamente me dirijo a usted, Yo. <strong>{{ carta.nombreEmpleado | uppercase }}</strong>,
+                    para solicitarle se sirva autorizarme:
+                    <span class="carta-underline dias-autorizacion">
+                        <strong>{{ carta.diasEnLetras }} ({{ carta.diasSolicitados }}) DÍAS HÁBILES</strong>
+                    </span>
+                </p>
+                <p class="carta-tipo-permiso">
+                    <span class="carta-underline"><strong>PERMISO POR {{ carta.tipoPermiso | uppercase }}</strong></span>
+                </p>
+                <p class="carta-mensaje">{{ carta.mensaje }}</p>
+                <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
+                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
+                </p>
+                <div class="carta-fechas-row">
+                    <span *ngIf="carta.fechaInicio === carta.fechaFin">
+                        Fecha: <span class="fecha-campo">{{ carta.fechaInicio }}</span>
+                    </span>
+                    <ng-container *ngIf="carta.fechaInicio !== carta.fechaFin">
+                        <span>Del <span class="fecha-campo">{{ carta.fechaInicio }}</span></span>
+                        <span>Al <span class="fecha-campo">{{ carta.fechaFinExtendida || carta.fechaFin }}</span></span>
+                    </ng-container>
+                </div>
+                <p *ngIf="carta.motivoExtension" class="carta-feriados">
+                    Extensión: {{ carta.motivoExtension }}
+                </p>
+                <p class="carta-sujeto">
+                    <strong>SUJETO A PREVIA AUTORIZACIÓN DEL JEFE INMEDIATO</strong>
+                </p>
+                <p class="carta-atentamente">Atentamente,</p>
+            </div>
+
+            <div class="carta-hro-firmas">
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <strong>{{ carta.nombreEmpleado | uppercase }}</strong>
+                    <span class="firma-label">{{ carta.rol | uppercase }}</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">JEFE DE DEPARTAMENTO</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">JEFE DE PERSONAL</span>
+                </div>
+                <div class="firma-bloque">
+                    <div class="firma-linea"></div>
+                    <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
+                    <span class="firma-sub">Y/O SUBDIRECCIÓN</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</ng-container>

@@ -27,6 +27,15 @@ class TiposPermisoModel {
     return rows.length ? rows[0] : null;
   }
 
+  static async existeNombre(nombre, excludeId = null) {
+    const sql = excludeId
+      ? `SELECT id FROM tipos_permiso WHERE LOWER(nombre) = LOWER(?) AND id != ? AND activo = 1`
+      : `SELECT id FROM tipos_permiso WHERE LOWER(nombre) = LOWER(?) AND activo = 1`;
+    const params = excludeId ? [nombre, excludeId] : [nombre];
+    const [rows] = await db.query(sql, params);
+    return rows.length > 0;
+  }
+
   static async create({ nombre, dias_permitidos, mensaje_carta }) {
     const [result] = await db.query(`
       INSERT INTO tipos_permiso (nombre, dias_permitidos, mensaje_carta)
@@ -92,6 +101,10 @@ class PermisosModel {
         p.creado_en,
         p.actualizado_en,
         p.autorizado_en,
+        p.firmas_config,
+        p.dias_adicionales,
+        p.motivo_extension,
+        DATE_FORMAT(p.fecha_fin_extendida, '%Y-%m-%d') AS fecha_fin_extendida,
         uc.username AS creado_por_usuario,
         ua.username AS autorizado_por_usuario
       FROM permisos p
@@ -110,7 +123,13 @@ class PermisosModel {
     sql += ` ORDER BY p.creado_en DESC, e.nombre_completo ASC`;
 
     const [rows] = await db.query(sql);
-    return rows;
+    // Parsear firmas_config si viene como string
+    return rows.map((r) => ({
+      ...r,
+      firmas_config: r.firmas_config
+        ? (typeof r.firmas_config === 'string' ? JSON.parse(r.firmas_config) : r.firmas_config)
+        : null
+    }));
   }
 
   static async getById(id) {
@@ -121,7 +140,8 @@ class PermisosModel {
         e.numero_empleado,
         e.rol_id,
         e.area_id,
-        tp.nombre AS tipo_permiso_nombre
+        tp.nombre AS tipo_permiso_nombre,
+        p.firmas_config
       FROM permisos p
       INNER JOIN empleados e ON p.empleado_id = e.id
       LEFT JOIN tipos_permiso tp ON p.tipo_permiso_id = tp.id
@@ -140,14 +160,19 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado = 'PENDIENTE',
-      creado_por
+      creado_por,
+      firmas_config = null,
+      dias_adicionales = null,
+      motivo_extension = null,
+      fecha_fin_extendida = null
     } = data;
 
     const [result] = await db.query(`
       INSERT INTO permisos (
         empleado_id, tipo_permiso_id, tipo_permiso_otro, mensaje_otro,
-        fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por,
+        firmas_config, dias_adicionales, motivo_extension, fecha_fin_extendida
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       empleado_id,
       tipo_permiso_id || null,
@@ -157,7 +182,11 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado,
-      creado_por || null
+      creado_por || null,
+      firmas_config ? JSON.stringify(firmas_config) : null,
+      dias_adicionales || null,
+      motivo_extension || null,
+      fecha_fin_extendida || null
     ]);
 
     return { id: result.insertId, ...data };
@@ -172,14 +201,19 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado,
-      observaciones
+      observaciones,
+      firmas_config = null,
+      dias_adicionales = null,
+      motivo_extension = null,
+      fecha_fin_extendida = null
     } = data;
 
     const [result] = await db.query(`
       UPDATE permisos
       SET tipo_permiso_id = ?, tipo_permiso_otro = ?, mensaje_otro = ?,
           fecha_inicio = ?, fecha_fin = ?, dias_solicitados = ?,
-          estado = ?, observaciones = ?
+          estado = ?, observaciones = ?, firmas_config = ?,
+          dias_adicionales = ?, motivo_extension = ?, fecha_fin_extendida = ?
       WHERE id = ?
     `, [
       tipo_permiso_id || null,
@@ -190,6 +224,10 @@ class PermisosModel {
       dias_solicitados,
       estado,
       observaciones || null,
+      firmas_config ? JSON.stringify(firmas_config) : null,
+      dias_adicionales || null,
+      motivo_extension || null,
+      fecha_fin_extendida || null,
       id
     ]);
 
@@ -206,6 +244,19 @@ class PermisosModel {
 
     if (result.affectedRows === 0) throw new Error('Permiso no encontrado');
     return this.getById(id);
+  }
+
+  static async hayTraslape(empleado_id, fecha_inicio, fecha_fin, fecha_fin_extendida = null, excludeId = null) {
+    const finEfectivo = fecha_fin_extendida || fecha_fin;
+    const [rows] = await db.query(`
+      SELECT id FROM permisos
+      WHERE empleado_id = ?
+        AND estado = 'AUTORIZADO'
+        AND id != ?
+        AND fecha_inicio <= ?
+        AND COALESCE(fecha_fin_extendida, fecha_fin) >= ?
+    `, [empleado_id, excludeId || -1, finEfectivo, fecha_inicio]);
+    return rows.length > 0;
   }
 
   static async delete(id) {
@@ -236,16 +287,24 @@ class TiposPermisoController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      // Verificar duplicado case-insensitive antes de insertar
+      if (await TiposPermisoModel.existeNombre(nombre)) {
+        return res.status(409).json({ success: false, error: 'Ya existe un tipo de permiso con ese nombre.' });
+      }
+
       const nuevo = await TiposPermisoModel.create({ nombre, dias_permitidos, mensaje_carta });
       await audit({ evento: 'CREATE', entidad: 'tipos_permiso', entidad_id: nuevo.id, antes: null, despues: nuevo, req });
 
       return res.status(201).json({ success: true, data: nuevo });
     } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ success: false, error: `Ya existe un tipo de permiso con ese nombre.` });
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
   }
 
-  static async update(req, res) {
+  static async update(req, res) {                
     try {
       const { id } = req.params;
       const { nombre, dias_permitidos, mensaje_carta } = req.body;
@@ -253,11 +312,24 @@ class TiposPermisoController {
       const antes = await TiposPermisoModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Tipo de permiso no encontrado' });
 
+      // No permitir cambiar el nombre si el tipo actual es "Vacaciones"
+      if (antes.nombre.toLowerCase() === 'vacaciones' && nombre.toLowerCase() !== 'vacaciones') {
+        return res.status(403).json({ success: false, error: 'El tipo "Vacaciones" no puede cambiar de nombre.' });
+      }
+
+      // Verificar duplicado case-insensitive excluyendo el registro actual
+      if (await TiposPermisoModel.existeNombre(nombre, id)) {
+        return res.status(409).json({ success: false, error: 'Ya existe un tipo de permiso con ese nombre.' });
+      }
+
       const actualizado = await TiposPermisoModel.update(id, { nombre, dias_permitidos, mensaje_carta });
       await audit({ evento: 'UPDATE', entidad: 'tipos_permiso', entidad_id: id, antes, despues: actualizado, req });
 
       return res.json({ success: true, data: actualizado });
     } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ success: false, error: `Ya existe un tipo de permiso con ese nombre.` });
+      }
       return res.status(500).json({ success: false, error: error.message });
     }
   }
@@ -268,6 +340,11 @@ class TiposPermisoController {
 
       const antes = await TiposPermisoModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Tipo de permiso no encontrado' });
+
+      // No permitir eliminar "Vacaciones"
+      if (antes.nombre.toLowerCase() === 'vacaciones') {
+        return res.status(403).json({ success: false, error: 'El tipo "Vacaciones" no puede eliminarse.' });
+      }
 
       await TiposPermisoModel.delete(id);
       await audit({ evento: 'DELETE', entidad: 'tipos_permiso', entidad_id: id, antes, despues: null, req });
@@ -318,6 +395,19 @@ class PermisosController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      // Verificar traslapes si se crea como AUTORIZADO
+      if (data.estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          data.empleado_id, data.fecha_inicio, data.fecha_fin, data.fecha_fin_extendida
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
+
       // Pasar el ID del usuario logueado como creado_por
       data.creado_por = req.actorId ?? null;
 
@@ -337,6 +427,23 @@ class PermisosController {
 
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });
+
+      // Verificar traslapes si se cambia a AUTORIZADO o si ya estaba AUTORIZADO y cambiaron las fechas
+      if (data.estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          antes.empleado_id, 
+          data.fecha_inicio || antes.fecha_inicio, 
+          data.fecha_fin || antes.fecha_fin, 
+          data.fecha_fin_extendida || antes.fecha_fin_extendida,
+          id
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
 
       const actualizado = await PermisosModel.update(id, data);
       await audit({ evento: 'UPDATE', entidad: 'permisos', entidad_id: id, antes, despues: actualizado, req });
@@ -358,6 +465,19 @@ class PermisosController {
 
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });
+
+      // Verificar traslapes si se cambia a AUTORIZADO
+      if (estado === 'AUTORIZADO') {
+        const traslape = await PermisosModel.hayTraslape(
+          antes.empleado_id, antes.fecha_inicio, antes.fecha_fin, antes.fecha_fin_extendida, id
+        );
+        if (traslape) {
+          return res.status(409).json({
+            success: false,
+            error: 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.'
+          });
+        }
+      }
 
       const actualizado = await PermisosModel.updateEstado(id, estado, req.actorId ?? null);
       await audit({ evento: 'UPDATE', entidad: 'permisos', entidad_id: id, antes, despues: actualizado, req });
@@ -389,15 +509,16 @@ class PermisosController {
 // RUTAS
 // ============================================
 
-// Todos los permisos vigentes hoy (para vista de empleados)
+// Todos los permisos vigentes hoy para vista empleados
 router.get('/vigentes-hoy', requireAuth, async (req, res) => {
   try {
     const hoy = new Date().toISOString().split('T')[0];
     const [rows] = await db.query(`
-      SELECT p.empleado_id, p.estado, p.fecha_inicio, p.fecha_fin
+      SELECT p.empleado_id, p.estado, p.fecha_inicio, p.fecha_fin,
+             p.fecha_fin_extendida
       FROM permisos p
       WHERE p.estado = 'AUTORIZADO'
-        AND p.fecha_inicio <= ? AND p.fecha_fin >= ?
+        AND p.fecha_inicio <= ? AND COALESCE(p.fecha_fin_extendida, p.fecha_fin) >= ?
     `, [hoy, hoy]);
     res.json({ success: true, data: rows });
   } catch (error) {
@@ -480,6 +601,8 @@ router.get('/reporte', requireAuth, async (req, res) => {
       SELECT
         p.id, p.fecha_inicio, p.fecha_fin, p.dias_solicitados, p.estado,
         p.observaciones, p.creado_en, p.autorizado_en,
+        p.dias_adicionales, p.motivo_extension,
+        DATE_FORMAT(p.fecha_fin_extendida, '%Y-%m-%d') AS fecha_fin_extendida,
         e.nombre_completo, e.numero_empleado, e.renglon,
         r.nombre_rol AS rol_nombre,
         a.nombre_area AS area_nombre,
@@ -490,7 +613,7 @@ router.get('/reporte', requireAuth, async (req, res) => {
       LEFT JOIN roles_empleado r ON e.rol_id = r.id
       LEFT JOIN areas a ON e.area_id = a.id
       LEFT JOIN tipos_permiso tp ON p.tipo_permiso_id = tp.id
-      WHERE p.fecha_inicio <= ? AND p.fecha_fin >= ?
+      WHERE p.fecha_inicio <= ? AND COALESCE(p.fecha_fin_extendida, p.fecha_fin) >= ?
     `;
 
     const params = [hasta, desde];

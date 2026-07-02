@@ -14,7 +14,7 @@ function isISODate(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')); }
 class EmpleadosModel {
     static async getAll() {
       const [rows] = await db.query(`
-        SELECT id, numero_empleado, renglon, nombre_completo, email, rol_id, area_id, activo, creado_en, actualizado_en
+        SELECT id, numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados, creado_en, actualizado_en
         FROM empleados
         ORDER BY nombre_completo ASC
       `);
@@ -24,7 +24,7 @@ class EmpleadosModel {
 
     static async getById(id) {
       const [rows] = await db.query(`
-        SELECT id, numero_empleado, renglon, nombre_completo, email, rol_id, area_id, activo, creado_en, actualizado_en
+        SELECT id, numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados, creado_en, actualizado_en
         FROM empleados
         WHERE id = ?
       `, [id]);
@@ -37,42 +37,54 @@ class EmpleadosModel {
       return rows.length ? rows[0] : null;
     }
 
+    static async getByDpi(dpi) {
+      if (!dpi) return null;
+      const [rows] = await db.query(`SELECT id FROM empleados WHERE dpi = ?`, [dpi]);
+      return rows.length ? rows[0] : null;
+    }
+
     static async getByEmail(email) {
       if (!email) return null;
       const [rows] = await db.query(`SELECT id FROM empleados WHERE email = ?`, [email]);
       return rows.length ? rows[0] : null;
     }
 
-  static async create({ numero_empleado, renglon, nombre_completo, email, rol_id, area_id, activo = 1 }) {
+  static async create({ numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo = 1, datos_actualizados = 1 }) {
     let normalizedAreaId = (area_id === '' || area_id === undefined || area_id === null || Number.isNaN(Number(area_id)))
       ? null : Number(area_id);
+    const normalizedRolId = (rol_id === '' || rol_id === undefined || rol_id === null || Number.isNaN(Number(rol_id)))
+      ? null : Number(rol_id);
 
     const [result] = await db.query(`
-      INSERT INTO empleados (numero_empleado, renglon, nombre_completo, email, rol_id, area_id, activo)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [numero_empleado, renglon || null, nombre_completo, email || null, rol_id, normalizedAreaId, activo]);
+      INSERT INTO empleados (numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [numero_empleado, renglon || null, nombre_completo, dpi || null, email || null, normalizedRolId, normalizedAreaId, activo, datos_actualizados ? 1 : 0]);
 
     return { 
       id: result.insertId, 
       numero_empleado, 
       renglon, 
-      nombre_completo, 
+      nombre_completo,
+      dpi: dpi || null,
       email: email || null,
       rol_id, 
       area_id: normalizedAreaId, 
-      activo 
+      activo,
+      datos_actualizados: datos_actualizados ? 1 : 0
     };
   }
 
-  static async update(id, { nombre_completo, email, rol_id, area_id, activo, renglon }) {
+  static async update(id, { nombre_completo, dpi, email, rol_id, area_id, activo, renglon, datos_actualizados }) {
     let normalizedAreaId = (area_id === '' || area_id === undefined || area_id === null || Number.isNaN(Number(area_id)))
       ? null : Number(area_id);
+    const normalizedRolId = (rol_id === '' || rol_id === undefined || rol_id === null || Number.isNaN(Number(rol_id)))
+      ? null : Number(rol_id);
 
     const [result] = await db.query(`
       UPDATE empleados 
-      SET nombre_completo=?, email=?, rol_id=?, area_id=?, activo=?, renglon=? 
+      SET nombre_completo=?, dpi=?, email=?, rol_id=?, area_id=?, activo=?, renglon=?, datos_actualizados=?
       WHERE id=?
-    `, [nombre_completo, email || null, rol_id, normalizedAreaId, activo, renglon || null, id]);
+    `, [nombre_completo, dpi || null, email || null, normalizedRolId, normalizedAreaId, activo, renglon || null, datos_actualizados ? 1 : 0, id]);
 
     if (result.affectedRows === 0) throw new Error('Empleado no encontrado');
     return this.getById(id);
@@ -141,7 +153,7 @@ class EmpleadosModel {
 
     static async createEmpleado(req, res) {
       try {
-        const { numero_empleado, renglon, nombre_completo, email, rol_id, area_id, activo } = req.body;
+        const { numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados } = req.body;
         const required = [];
         if (!numero_empleado) required.push('numero_empleado');
         if (!nombre_completo) required.push('nombre_completo');
@@ -153,6 +165,16 @@ class EmpleadosModel {
 
         if (await EmpleadosModel.getByNumeroEmpleado(numero_empleado)) {
           return res.status(409).json({ success: false, field: 'numero_empleado', error: 'El número de empleado ya existe' });
+        }
+
+        // Validar DPI: solo dígitos, exactamente 13 caracteres, único
+        if (dpi) {
+          if (!/^\d{13}$/.test(dpi)) {
+            return res.status(400).json({ success: false, field: 'dpi', error: 'El DPI debe tener exactamente 13 dígitos numéricos' });
+          }
+          if (await EmpleadosModel.getByDpi(dpi)) {
+            return res.status(409).json({ success: false, field: 'dpi', error: 'El DPI ya está registrado' });
+          }
         }
 
         if (email) {
@@ -168,10 +190,12 @@ class EmpleadosModel {
           numero_empleado,
           renglon,
           nombre_completo,
+          dpi: dpi || null,
           email: email || null,
-          rol_id: parseInt(rol_id, 10),
+          rol_id: rol_id != null && !isNaN(parseInt(rol_id, 10)) ? parseInt(rol_id, 10) : null,
           area_id,
           activo: activo !== undefined ? Boolean(activo) : true,
+          datos_actualizados: datos_actualizados !== undefined ? Boolean(datos_actualizados) : true,
         });
 
         await audit({ evento: 'CREATE', entidad: 'empleados', entidad_id: nuevo.id, antes: null, despues: nuevo, req });
@@ -184,19 +208,32 @@ class EmpleadosModel {
     static async updateEmpleado(req, res) {
       try {
         const { id } = req.params;
-        const { nombre_completo, email, rol_id, area_id, activo, renglon } = req.body;
+        const { nombre_completo, dpi, email, rol_id, area_id, activo, renglon, datos_actualizados } = req.body;
         if (!id || isNaN(id)) return res.status(400).json({ success: false, error: 'ID invalido' });
 
         const existente = await EmpleadosModel.getById(parseInt(id, 10));
         if (!existente) return res.status(404).json({ success: false, error: 'Empleado no encontrado' });
 
+        // Validar DPI si se envía y cambió
+        if (dpi && dpi !== existente.dpi) {
+          if (!/^\d{13}$/.test(dpi)) {
+            return res.status(400).json({ success: false, field: 'dpi', error: 'El DPI debe tener exactamente 13 dígitos numéricos' });
+          }
+          const duplicado = await EmpleadosModel.getByDpi(dpi);
+          if (duplicado && duplicado.id !== parseInt(id, 10)) {
+            return res.status(409).json({ success: false, field: 'dpi', error: 'El DPI ya está registrado' });
+          }
+        }
+
         const actualizado = await EmpleadosModel.update(parseInt(id, 10), {
           nombre_completo,
+          dpi: dpi || null,
           email: email || null,
-          rol_id: parseInt(rol_id, 10),
+          rol_id: rol_id != null && !isNaN(parseInt(rol_id, 10)) ? parseInt(rol_id, 10) : null,
           area_id,
           activo: activo !== undefined ? Boolean(activo) : existente.activo,
-          renglon
+          renglon,
+          datos_actualizados: datos_actualizados !== undefined ? Boolean(datos_actualizados) : existente.datos_actualizados
         });
 
         await audit({ evento: 'UPDATE', entidad: 'empleados', entidad_id: parseInt(id, 10), antes: existente, despues: actualizado, req });
@@ -215,7 +252,7 @@ class EmpleadosModel {
         if (!antes) return res.status(404).json({ success: false, error: 'Empleado no encontrado' });
 
         await EmpleadosModel.softDelete(parseInt(id, 10));
-        await audit({ evento: 'DEACTIVATE', entidad: 'empleados', entidad_id: parseInt(id, 10), antes, despues: { ...antes, activo: 0 }, req });
+        await audit({ evento: 'UPDATE', entidad: 'empleados', entidad_id: parseInt(id, 10), antes, despues: { ...antes, activo: 0 }, req });
         return res.json({ success: true, message: 'Empleado desactivado' });
       } catch (error) {
         return res.status(500).json({ success: false, error: 'Error desactivando empleado', message: error.message });
@@ -232,7 +269,7 @@ class EmpleadosModel {
 
         await db.query(`UPDATE empleados SET activo = 1 WHERE id = ?`, [id]);
         await audit({
-          evento: 'ACTIVATE',
+          evento: 'UPDATE',
           entidad: 'empleados',
           entidad_id: parseInt(id, 10),
           antes,

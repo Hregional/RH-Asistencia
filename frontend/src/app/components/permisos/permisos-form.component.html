@@ -1,0 +1,162 @@
+<div class="form-container" *ngIf="mode === 'solicitud'">
+    <div class="form-header">
+        <h3>Solicitud de Permiso</h3>
+        <button class="btn btn-secondary btn-small" (click)="volver.emit()">← Volver</button>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Empleado</label>
+            <div class="autocomplete-wrapper">
+                <input type="text" [ngModel]="empleadoBusqueda" (ngModelChange)="empleadoBusquedaChange.emit($event)"
+                    (input)="buscarEmpleado.emit()" placeholder="Buscar por nombre" autocomplete="off"
+                    maxlength="100" />
+                <div class="autocomplete-list" *ngIf="empleadosFiltrados.length > 0">
+                    <div class="autocomplete-item" *ngFor="let emp of empleadosFiltrados"
+                        (click)="seleccionarEmpleado.emit(emp)">
+                        {{ emp.numero_empleado }} - {{ emp.nombre_completo }}
+                    </div>
+                </div>
+            </div>
+            <small *ngIf="empleadoSeleccionado" class="selected-info">✓ {{ empleadoSeleccionado.nombre_completo
+                }}</small>
+        </div>
+
+        <div class="form-group">
+            <label>Tipo de Permiso</label>
+            <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="tipoPermisoChange.emit()">
+                <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
+                <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">{{ tipo.nombre }} ({{ tipo.dias_permitidos
+                    }} días)</option>
+                <option [ngValue]="-1">Personalizado</option>
+            </select>
+        </div>
+    </div>
+
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nombre del Permiso *</label>
+                <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" maxlength="30" required />
+            </div>
+            <div class="form-group">
+                <label>Motivo del Permiso</label>
+                <textarea [(ngModel)]="solicitudForm.mensaje_otro" maxlength="180" required></textarea>
+            </div>
+        </div>
+    </ng-container>
+
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined">
+        <div class="form-row">
+            <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
+                <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
+                <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias.emit()" required
+                    [min]="hoy" [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
+            </div>
+            <div class="form-group" *ngIf="!esDiaUnico">
+                <label>Fecha de Fin</label>
+                <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias.emit()" required
+                    [min]="solicitudForm.fecha_inicio || hoy" />
+            </div>
+            <div class="form-group form-group-small">
+                <label>Días hábiles</label>
+                <input type="number" [value]="solicitudForm.dias_solicitados" readonly style="background:#e9ecef;"
+                    [class.dias-cero]="!solicitudForm.dias_solicitados" [class.dias-excedidos]="diasExcedidos" />
+                <small *ngIf="solicitudForm.fecha_inicio && solicitudForm.fecha_fin && !solicitudForm.dias_solicitados"
+                    class="warn-dias">El rango no contiene días hábiles</small>
+                <small *ngIf="diasExcedidos" class="warn-dias">Excede el límite permitido del tipo de permiso</small>
+            </div>
+        </div>
+    </ng-container>
+
+    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && cartaData">
+        <app-permiso-carta [cartaData]="cartaData"></app-permiso-carta>
+    </ng-container>
+
+    <div class="form-actions">
+        <button class="btn btn-primary" (click)="guardarSolicitud.emit()" [disabled]="loading">Guardar
+            Solicitud</button>
+        <button class="btn btn-secondary" (click)="volver.emit()">Cancelar</button>
+    </div>
+</div>
+
+<div class="form-container" *ngIf="mode === 'editar' && editingPermiso">
+    <div class="form-header">
+        <h3>Editar Permiso</h3>
+        <button class="btn btn-secondary btn-small" (click)="volver.emit()">← Volver</button>
+    </div>
+
+    <div class="form-group">
+        <label>Empleado</label>
+        <input type="text" [value]="editingPermiso.nombre_completo" readonly style="background:#e9ecef;" />
+    </div>
+
+    <div class="form-group">
+        <label>Tipo de Permiso</label>
+        <select [(ngModel)]="solicitudForm.tipo_permiso_id" (change)="tipoPermisoChange.emit()">
+            <option [ngValue]="undefined" disabled>Seleccionar tipo...</option>
+            <option *ngFor="let tipo of tiposPermiso" [ngValue]="tipo.id">{{ tipo.nombre }} ({{ tipo.dias_permitidos }}
+                días)</option>
+            <option [ngValue]="-1">Personalizado</option>
+        </select>
+    </div>
+
+    <ng-container *ngIf="solicitudForm.tipo_permiso_id === -1">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Nombre del Permiso</label>
+                <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" maxlength="100" required>
+            </div>
+            <div class="form-group">
+                <label>Motivo del Permiso</label>
+                <textarea [(ngModel)]="solicitudForm.mensaje_otro" maxlength="180" required
+                    style="min-height:38px;"></textarea>
+            </div>
+        </div>
+    </ng-container>
+
+    <div class="form-row">
+        <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
+            <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
+            <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias.emit()" required
+                [min]="hoy" [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
+        </div>
+        <div class="form-group" *ngIf="!esDiaUnico">
+            <label>Fecha de Fin</label>
+            <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias.emit()" required
+                [min]="solicitudForm.fecha_inicio || hoy" />
+        </div>
+        <div class="form-group form-group-small">
+            <label>Días hábiles</label>
+            <input type="number" [value]="solicitudForm.dias_solicitados" readonly style="background:#e9ecef;"
+                [class.dias-cero]="!solicitudForm.dias_solicitados" [class.dias-excedidos]="diasExcedidos" />
+            <small *ngIf="solicitudForm.fecha_inicio && solicitudForm.fecha_fin && !solicitudForm.dias_solicitados"
+                class="warn-dias">El rango no contiene días hábiles</small>
+            <small *ngIf="diasExcedidos" class="warn-dias">Excede el límite permitido del tipo de permiso</small>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Estado</label>
+        <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="estadoChange.emit($event)">
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="AUTORIZADO">Autorizado</option>
+            <option value="RECHAZADO">Rechazado</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Observaciones</label>
+        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+            maxlength="75"></textarea>
+    </div>
+
+    <ng-container *ngIf="empleadoSeleccionado && solicitudForm.fecha_inicio && cartaData">
+        <app-permiso-carta [cartaData]="cartaData"></app-permiso-carta>
+    </ng-container>
+
+    <div class="form-actions">
+        <button class="btn btn-primary" (click)="actualizarPermiso.emit()" [disabled]="loading">Actualizar</button>
+        <button class="btn btn-secondary" (click)="volver.emit()">Cancelar</button>
+    </div>
+</div>

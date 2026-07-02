@@ -18,12 +18,7 @@ const mysql = require('mysql2/promise');
         let foundDb = dbs.find(d => d.Database.toLowerCase() === targetDb.toLowerCase());
 
         if (!foundDb) {
-            console.warn(`Database ${targetDb} not found! Checking for sigsa_db...`);
-            foundDb = dbs.find(d => d.Database.toLowerCase() === 'sigsa_db');
-        }
-
-        if (!foundDb) {
-            console.error(`Neither ${targetDb} nor sigsa_db found!`);
+            console.error(`Database ${targetDb} not found!`);
             process.exit(1);
         }
 

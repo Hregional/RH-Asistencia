@@ -1,0 +1,98 @@
+<div class="filters-bar">
+    <button class="btn btn-primary" (click)="solicitarPermiso.emit()" [disabled]="loading">
+        + Solicitar Permiso
+    </button>
+    <button class="btn btn-secondary" (click)="registrarTipoPermiso.emit()" [disabled]="loading">
+        Registrar Tipo de Permiso
+    </button>
+
+    <div class="search-box">
+        <input type="text" [ngModel]="searchTerm" (ngModelChange)="searchTermChange.emit($event)"
+            placeholder="Buscar por nombre" [disabled]="loading" />
+        <button *ngIf="searchTerm" class="btn btn-secondary btn-small"
+            (click)="searchTermChange.emit('')">Limpiar</button>
+    </div>
+
+    <div class="filtro-estado-group">
+        <button class="btn-filtro-estado" [class.activo]="filtroEstado === 'TODOS'"
+            (click)="filtroEstadoChange.emit('TODOS')">Todos</button>
+        <button class="btn-filtro-estado filtro-pendiente" [class.activo]="filtroEstado === 'PENDIENTE'"
+            (click)="filtroEstadoChange.emit('PENDIENTE')">Pendiente</button>
+        <button class="btn-filtro-estado filtro-autorizado" [class.activo]="filtroEstado === 'AUTORIZADO'"
+            (click)="filtroEstadoChange.emit('AUTORIZADO')">Autorizado</button>
+        <button class="btn-filtro-estado filtro-rechazado" [class.activo]="filtroEstado === 'RECHAZADO'"
+            (click)="filtroEstadoChange.emit('RECHAZADO')">Rechazado</button>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="permisos-table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Rol</th>
+                <th>Área</th>
+                <th>Tipo de Permiso</th>
+                <th>Fecha de Inicio</th>
+                <th>Fecha de Finalización</th>
+                <th>Días Hábiles</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let permiso of paginatedPermisos">
+                <td>{{ permiso.nombre_completo }}</td>
+                <td>{{ permiso.rol_nombre || '—' }}</td>
+                <td>{{ permiso.area_nombre || '—' }}</td>
+                <td>{{ permiso.tipo_permiso_nombre || permiso.tipo_permiso_otro || '—' }}</td>
+                <td>{{ permiso.fecha_inicio | date:'dd/MM/yyyy' }}</td>
+                <td>{{ permiso.fecha_fin | date:'dd/MM/yyyy' }}</td>
+                <td>{{ permiso.dias_solicitados }}</td>
+                <td>
+                    <span class="badge-estado" [ngClass]="getEstadoClass(permiso.estado, permiso)"
+                        [title]="permiso.observaciones || ''">
+                        {{ permiso.estado === 'AUTORIZADO' && yaFinalizo(permiso) ? 'Finalizado' : permiso.estado }}
+                    </span>
+                    <button *ngIf="permiso.observaciones" type="button" class="btn-obs-icon"
+                        [title]="permiso.observaciones" (click)="emitirObservacion($event, permiso)">💬</button>
+                </td>
+                <td class="action-buttons">
+                    <ng-container *ngIf="!yaFinalizo(permiso)">
+                        <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small"
+                            (click)="autorizarPermiso.emit(permiso)">Autorizar</button>
+                        <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small"
+                            (click)="rechazarPermiso.emit(permiso)">Rechazar</button>
+                        <button class="btn btn-primary btn-small" (click)="editarPermiso.emit(permiso)">Editar</button>
+                    </ng-container>
+                    <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)"
+                        class="btn btn-secondary btn-small" (click)="imprimirPermiso.emit(permiso)"
+                        title="Imprimir carta">🖨️ Imprimir</button>
+                    <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
+                        (click)="imprimirPermiso.emit(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
+                </td>
+            </tr>
+            <tr *ngIf="filteredPermisos.length === 0">
+                <td colspan="9" class="no-data">{{ getTextoVacio() }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="pagination-controls" *ngIf="filteredPermisos.length > itemsPerPage">
+        <button class="btn btn-secondary btn-small" (click)="prevPage.emit()"
+            [disabled]="currentPage === 1">Anterior</button>
+        <span class="pagination-info">Página {{ currentPage }} de {{ totalPages }}</span>
+        <button class="btn btn-secondary btn-small" (click)="nextPage.emit()"
+            [disabled]="currentPage === totalPages">Siguiente</button>
+    </div>
+</div>
+
+<div *ngIf="popupObservaciones" class="obs-overlay" (click)="cerrarPopup.emit()"></div>
+
+<div *ngIf="popupObservaciones" class="obs-popup" [style.top.px]="popupObservaciones.y + 10"
+    [style.left.px]="popupObservaciones.x - 160">
+    <button class="obs-popup-close" (click)="cerrarPopup.emit()">×</button>
+    <div class="obs-popup-body">
+        <strong>{{ popupObservaciones.permiso.observaciones || '—' }}</strong>
+    </div>
+</div>

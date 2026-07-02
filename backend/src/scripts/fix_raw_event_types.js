@@ -1,5 +1,4 @@
 require('dotenv').config();
-process.env.DB_NAME = 'sigsa_db';
 const db = require('../db');
 
 async function fixEventTypes(startDate, endDate) {

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - include:
+      file: ../migration_modulo_permisos.sql
+      relativeToChangelogFile: true
+
+  - include:
+      file: ../migration_dpi_datos_actualizados.sql
+      relativeToChangelogFile: true
+
+  - include:
+      file: ../migration_update_vacaciones_description.sql
+      relativeToChangelogFile: true

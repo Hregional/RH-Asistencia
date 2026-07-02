@@ -4,25 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.service';
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
+import { numeroALetras } from '../../utils/number-to-words';
 import {
-  esFeriado, getNombreFeriado, parseFechaLocal,
-  calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango,
-  getPascua
+  esFeriado,
+  parseFechaLocal,
+  calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango
 } from '../../utils/feriados';
-
-// ─── Número a letras (español) ───────────────────────────────────────────────
-const UNIDADES = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
-  'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-const DECENAS = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-
-export function numeroALetras(n: number): string {
-  if (n === 0) return 'CERO';
-  if (n < 20) return UNIDADES[n];
-  if (n < 30) return n === 20 ? 'VEINTE' : 'VEINTI' + UNIDADES[n - 20];
-  const dec = Math.floor(n / 10);
-  const uni = n % 10;
-  return uni === 0 ? DECENAS[dec] : DECENAS[dec] + ' Y ' + UNIDADES[uni];
-}
+import { PermisoCartaComponent } from './permiso-carta.component';
+import { PermisosFormComponent } from './permisos-form.component';
+import { PermisosListComponent } from './permisos-list.component';
+import { PermisosTiposComponent } from './permisos-tipos.component';
+import { CartaData, PermisosView, PopupObservaciones } from './permisos.types';
 
 @Component({
   selector: 'app-permisos',
@@ -45,7 +37,7 @@ export class PermisosComponent implements OnInit {
   filtroEstado: 'TODOS' | 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO' = 'TODOS';
 
   // Vistas
-  vistaActual: 'tabla' | 'solicitud' | 'editarPermiso' | 'tiposPermiso' = 'tabla';
+  vistaActual: PermisosView = 'tabla';
 
   // Buscador empleado en solicitud
   empleadoBusqueda = '';
@@ -62,11 +54,23 @@ export class PermisosComponent implements OnInit {
   // Permiso en edición
   editingPermiso: Permiso | null = null;
 
+  // Firmas visibles en la carta (todas activas por defecto)
+  firmas = {
+    empleado: true,
+    jefeDepto: true,
+    jefePersonal: true,
+    direccion: true,
+    oficioRH: true
+  };
+
+  // Extensión de días adicionales
+  tieneExtension = false;
+
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
 
   // Popup de observaciones
-  popupObservaciones: { permiso: Permiso; x: number; y: number } | null = null;
+  popupObservaciones: PopupObservaciones | null = null;
 
   // Modal de aviso simple
   avisoModal: string | null = null;
@@ -101,8 +105,14 @@ export class PermisosComponent implements OnInit {
     return tipo?.dias_permitidos === 1;
   }
 
+  /** True cuando el tipo seleccionado es Vacaciones */
+  get esVacaciones(): boolean {
+    const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
+    return tipo?.nombre.toLowerCase() === 'vacaciones';
+  }
+
   // Carta preview
-  cartaData = this.initCartaData();
+  cartaData: CartaData = this.initCartaData();
 
   // Usuario logueado actual
   usuarioActual = '';
@@ -117,8 +127,8 @@ export class PermisosComponent implements OnInit {
     this.loadPermisos();
     this.loadEmpleados();
     this.loadTiposPermiso();
-    this.empleadosSvc.getRoles().subscribe(r => { if (r.success && r.data) this.roles = r.data; });
-    this.empleadosSvc.getAreas().subscribe(a => { if (a.success && a.data) this.areas = a.data; });
+    this.empleadosSvc.getRoles().subscribe((r: any) => { if (r.success && r.data) this.roles = r.data; });
+    this.empleadosSvc.getAreas().subscribe((a: any) => { if (a.success && a.data) this.areas = a.data; });
     // Obtener username del usuario logueado
     try {
       const token = this.kc.getKeycloakInstance()?.tokenParsed as any;
@@ -135,7 +145,10 @@ export class PermisosComponent implements OnInit {
       fecha_inicio: '',
       fecha_fin: '',
       dias_solicitados: 0,
-      estado: 'PENDIENTE'
+      estado: 'PENDIENTE',
+      dias_adicionales: null,
+      motivo_extension: null,
+      fecha_fin_extendida: null
     };
   }
 
@@ -143,7 +156,7 @@ export class PermisosComponent implements OnInit {
     return { nombre: '', dias_permitidos: 1, mensaje_carta: '' };
   }
 
-  private initCartaData() {
+  private initCartaData(): CartaData {
     return {
       nombreEmpleado: '',
       renglon: '',
@@ -163,16 +176,19 @@ export class PermisosComponent implements OnInit {
       creadoPor: '',
       autorizadoPor: '',
       fechaHoraImpresion: '',
-      autorizadoEn: ''
+      autorizadoEn: '',
+      fechaFinExtendida: '',
+      motivoExtension: '',
+      diasAdicionales: null
     };
   }
 
-  // ─── CARGA DE DATOS ───────────────────────────────────────────────
+  // ─── CARGA DE DATOS 
   loadPermisos() {
     this.loading = true;
     // Cargar todos los permisos para gestión (vigentes, futuros y recientes)
     this.permisosSvc.getPermisos('todos').subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.permisos = res.success && res.data ? res.data : [];
         this.updatePagination();
         this.loading = false;
@@ -188,14 +204,14 @@ export class PermisosComponent implements OnInit {
           this.empleados = res.data.filter((e: Empleado) => e.activo);
         }
       },
-      error: (err) => console.error('Error cargando empleados:', err)
+      error: (err: any) => console.error('Error cargando empleados:', err)
     });
   }
 
   loadTiposPermiso() {
     this.permisosSvc.getTiposPermiso().subscribe({
-      next: (res) => { this.tiposPermiso = res.success && res.data ? res.data : []; },
-      error: (err) => console.error('Error cargando tipos:', err)
+      next: (res: any) => { this.tiposPermiso = res.success && res.data ? res.data : []; },
+      error: (err: any) => console.error('Error cargando tipos:', err)
     });
   }
 
@@ -246,15 +262,13 @@ export class PermisosComponent implements OnInit {
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   }
 
-  // ─── BUSCADOR EMPLEADO ────────────────────────────────────────────
+  // OPTIMIZADO BUSCADOR EMPLEADO SOLO NOM
   onEmpleadoBusqueda() {
     const t = this.norm(this.empleadoBusqueda);
     if (!t) { this.empleadosFiltrados = []; return; }
-    this.empleadosFiltrados = this.empleados.filter(e =>
-      [e.nombre_completo, String(e.numero_empleado),
-      (e as any).rol_nombre || '', (e as any).area_nombre || '']
-        .some(v => this.norm(String(v)).includes(t))
-    ).slice(0, 10);
+    this.empleadosFiltrados = this.empleados
+      .filter(e => this.norm(e.nombre_completo || '').includes(t))
+      .slice(0, 10);
   }
 
   seleccionarEmpleado(emp: Empleado) {
@@ -265,7 +279,96 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
+  // CÁLCULO FECHA FIN EXTENDIDA SIN CONSIDERAR FINES DE SEM Y TAMPOCO FERIADOS ESTABLECIDOS
+  /** Suma N días hábiles desde una fecha dada (máx 30 días adicionales, límite de 500 iteraciones) */
+  calcularFechaFinExtendida(): void {
+    const dias = this.solicitudForm.dias_adicionales;
+    const fechaBase = this.solicitudForm.fecha_fin;
+
+    // Validar: requiere fecha_fin y días entre 1 y 30
+    if (!dias || dias <= 0 || dias > 30 || !fechaBase) {
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+      return;
+    }
+
+    let fecha = parseFechaLocal(fechaBase);
+    let contados = 0;
+    let iteraciones = 0;
+    const MAX_ITER = 500; // Límite de seguridad para evitar loop infinito
+
+    while (contados < dias && iteraciones < MAX_ITER) {
+      iteraciones++;
+      fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
+      const dia = fecha.getDay();
+      if (dia === 0 || dia === 6) continue; // fin de semana
+      if (esFeriado(fecha)) continue;       // feriado GT
+      contados++;
+    }
+
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    this.solicitudForm.fecha_fin_extendida = `${y}-${m}-${d}`;
+    this.actualizarCarta();
+  }
+
+  onDiasAdicionalesChange(valor: any): void {
+    const dias = Number(valor);
+    // Si está vacío, cero o inválido, limpiar — no forzar a 1
+    if (!valor || isNaN(dias) || dias <= 0) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+      return;
+    }
+    const clamped = Math.min(Math.max(Math.floor(dias), 1), 30);
+    this.solicitudForm.dias_adicionales = clamped;
+    this.calcularFechaFinExtendida();
+  }
+
+  onToggleExtension(valor: boolean): void {
+    // tieneExtension ya fue actualizado por ngModel
+    if (!valor) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.motivo_extension = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+    } else {
+      // Si ya hay días ingresados y fecha_fin, recalcular al activar
+      if (this.solicitudForm.dias_adicionales && this.solicitudForm.fecha_fin) {
+        this.calcularFechaFinExtendida();
+      }
+    }
+  }
+
+  toggleExtension(): void {
+    this.tieneExtension = !this.tieneExtension;
+    if (!this.tieneExtension) {
+      this.solicitudForm.dias_adicionales = null;
+      this.solicitudForm.motivo_extension = null;
+      this.solicitudForm.fecha_fin_extendida = null;
+      this.actualizarCarta();
+    }
+  }
+
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
+  private resetFirmas(permiso?: Permiso) {
+    const cfg = permiso?.firmas_config;
+    if (cfg) {
+      const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
+      this.firmas = {
+        empleado: parsed.empleado ?? true,
+        jefeDepto: parsed.jefeDepto ?? true,
+        jefePersonal: parsed.jefePersonal ?? true,
+        direccion: parsed.direccion ?? true,
+        oficioRH: parsed.oficioRH ?? true
+      };
+    } else {
+      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
+    }
+  }
+
   irASolicitud() {
     this.vistaActual = 'solicitud';
     this.editingPermiso = null;
@@ -275,6 +378,8 @@ export class PermisosComponent implements OnInit {
     this.solicitudForm = this.initSolicitudForm();
     this.cartaData = this.initCartaData();
     this.diasExcedidos = false;
+    this.resetFirmas();
+    this.tieneExtension = false;
   }
 
   /** Normaliza fecha ISO con timezone a 'YYYY-MM-DD' para inputs date */
@@ -289,6 +394,11 @@ export class PermisosComponent implements OnInit {
   irAEditarPermiso(permiso: Permiso) {
     this.editingPermiso = permiso;
     this.vistaActual = 'editarPermiso';
+    // Cargar firmas desde el permiso (firmas_config viene del backend)
+    console.log('firmas_config al editar:', (permiso as any).firmas_config);
+    this.resetFirmas(permiso);
+    // Cargar estado de extensión
+    this.tieneExtension = !!(permiso.dias_adicionales && permiso.dias_adicionales > 0);
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
     const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
@@ -324,10 +434,19 @@ export class PermisosComponent implements OnInit {
     this.editingPermiso = null;
     this.editingTipoPermiso = null;
     this.error = null;
+    this.resetFirmas();
+    this.tieneExtension = false;
+    // Resetear formulario completo para que no queden datos sucios
+    this.solicitudForm = this.initSolicitudForm();
+    this.empleadoSeleccionado = null;
+    this.empleadoBusqueda = '';
+    this.empleadosFiltrados = [];
+    this.diasExcedidos = false;
+    this.cartaData = this.initCartaData();
     this.loadPermisos();
   }
 
-  // ─── TIPO PERMISO CHANGE ──────────────────────────────────────────
+  // ─── TIPO PERMISO CUANDO SE CAMBIA EN EDITAR 
   onTipoPermisoChange() {
     // Solo limpiar campos específicos del tipo anterior, no todo
     this.solicitudForm.tipo_permiso_otro = '';
@@ -338,15 +457,47 @@ export class PermisosComponent implements OnInit {
     this.solicitudForm.fecha_fin = '';
     this.solicitudForm.dias_solicitados = 0;
     this.diasExcedidos = false;
+
+    // Resetear extensión porque las fechas cambiaron
+    this.tieneExtension = false;
+    this.solicitudForm.dias_adicionales = null;
+    this.solicitudForm.motivo_extension = null;
+    this.solicitudForm.fecha_fin_extendida = null;
+
     this.actualizarCarta();
   }
 
-  // ─── CÁLCULO DE DÍAS HÁBILES (calendario guatemalteco) ───────────
+  // ─── CÁLCULO DE DÍAS HÁBILES (calendario GT)
   calcularDias() {
     // Si es permiso de 1 día, forzar fecha_fin = fecha_inicio antes de validar
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
       this.solicitudForm.fecha_fin = this.solicitudForm.fecha_inicio;
     }
+
+    // Validar que las fechas no sean fin de semana
+    if (this.solicitudForm.fecha_inicio) {
+      const dInicio = new Date(this.solicitudForm.fecha_inicio + 'T00:00:00');
+      if (dInicio.getDay() === 0 || dInicio.getDay() === 6) {
+        this.error = 'La fecha de inicio no puede ser sábado o domingo.';
+        this.solicitudForm.fecha_inicio = '';
+        this.solicitudForm.dias_solicitados = 0;
+        this.actualizarCarta();
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+    if (this.solicitudForm.fecha_fin && !this.esDiaUnico) {
+      const dFin = new Date(this.solicitudForm.fecha_fin + 'T00:00:00');
+      if (dFin.getDay() === 0 || dFin.getDay() === 6) {
+        this.error = 'La fecha de fin no puede ser sábado o domingo.';
+        this.solicitudForm.fecha_fin = '';
+        this.solicitudForm.dias_solicitados = 0;
+        this.actualizarCarta();
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+
     if (!this.solicitudForm.fecha_inicio || !this.solicitudForm.fecha_fin) {
       this.solicitudForm.dias_solicitados = 0;
       this.actualizarCarta();
@@ -360,10 +511,15 @@ export class PermisosComponent implements OnInit {
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     this.diasExcedidos = !!(tipo && this.solicitudForm.dias_solicitados > tipo.dias_permitidos);
 
-    this.actualizarCarta();
+    // Si hay extensión activa y hay días ingresados, recalcular fecha fin extendida
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      this.calcularFechaFinExtendida();
+    } else {
+      this.actualizarCarta();
+    }
   }
 
-  // ─── CARTA PREVIEW ────────────────────────────────────────────────
+  // ─── CARTA PREVIEW 
   actualizarCarta() {
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     const hoy = new Date();
@@ -402,7 +558,7 @@ export class PermisosComponent implements OnInit {
         : (tipo?.nombre || ''),
       mensaje: this.solicitudForm.tipo_permiso_id === -1
         ? (this.solicitudForm.mensaje_otro || '')
-        : (tipo?.mensaje_carta || ''),
+        : (tipo?.mensaje_carta || '') + (this.solicitudForm.mensaje_otro ? ' ' + this.solicitudForm.mensaje_otro : ''),
       fechaInicio: fmtFecha(this.solicitudForm.fecha_inicio || ''),
       fechaFin: fmtFecha(this.solicitudForm.fecha_fin || ''),
       diasSolicitados: dias,
@@ -412,7 +568,18 @@ export class PermisosComponent implements OnInit {
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
       fechaHoraImpresion: '',
-      autorizadoEn: ''
+      autorizadoEn: (() => {
+        // En formulario de creación/edición, mostrar hora actual como hora de generación
+        const ahora = new Date();
+        const p2 = (n: number) => String(n).padStart(2, '0');
+        const h = ahora.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+        return `${p2(ahora.getDate())}/${p2(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${p2(h % 12 || 12)}:${p2(ahora.getMinutes())} ${ampm}`;
+      })(),
+      fechaFinExtendida: this.solicitudForm.fecha_fin_extendida
+        ? (() => { const [y, m, d] = (this.solicitudForm.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        : '',
+      motivoExtension: this.solicitudForm.motivo_extension || '',
+      diasAdicionales: this.solicitudForm.dias_adicionales || null
     };
   }
 
@@ -436,6 +603,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
@@ -446,21 +619,31 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar si tiene turno asignado en ese rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea crear el permiso de todas formas?`)) return;
-        }
-        this.ejecutarGuardarSolicitud();
-      },
-      error: () => this.ejecutarGuardarSolicitud() // si falla la verificación, continuar
-    });
+    // Validar extensión: si hay días adicionales, el motivo es obligatorio
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      if (!this.solicitudForm.motivo_extension?.trim()) {
+        this.error = 'El motivo de extensión es obligatorio cuando se agregan días adicionales.';
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+
+    // Validar traslapes si se guarda como AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.solicitudForm.empleado_id!,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
+    // Guardar directamente sin verificar turnos
+    this.ejecutarGuardarSolicitud();
   }
 
   private ejecutarGuardarSolicitud() {
@@ -470,11 +653,12 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
 
     this.permisosSvc.createPermiso(data).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) { this.volverATabla(); }
         else this.error = res.error || 'Error guardando solicitud';
@@ -499,6 +683,12 @@ export class PermisosComponent implements OnInit {
         return;
       }
     }
+
+    if (this.esVacaciones && !this.solicitudForm.mensaje_otro?.trim()) {
+      this.error = 'La descripción del período de vacaciones es obligatoria';
+      return;
+    }
+
     if (!this.solicitudForm.dias_solicitados || this.solicitudForm.dias_solicitados === 0) {
       this.error = 'El rango de fechas no contiene días hábiles. Verifique las fechas.';
       return;
@@ -509,21 +699,32 @@ export class PermisosComponent implements OnInit {
       return;
     }
 
-    // Verificar turnos asignados en el rango
-    this.permisosSvc.getTurnosEnRango(
-      this.solicitudForm.empleado_id!,
-      this.solicitudForm.fecha_inicio!,
-      this.solicitudForm.fecha_fin!
-    ).subscribe({
-      next: (res) => {
-        if (res.tieneTurnos) {
-          const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-          if (!confirm(`⚠️ Este empleado tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea actualizar el permiso de todas formas?`)) return;
-        }
-        this.ejecutarActualizarPermiso();
-      },
-      error: () => this.ejecutarActualizarPermiso()
-    });
+    // Validar extensión: si hay días adicionales, el motivo es obligatorio
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
+      if (!this.solicitudForm.motivo_extension?.trim()) {
+        this.error = 'El motivo de extensión es obligatorio cuando se agregan días adicionales.';
+        setTimeout(() => this.error = null, 4000);
+        return;
+      }
+    }
+
+    // Validar traslapes si se cambia a AUTORIZADO
+    if (this.solicitudForm.estado === 'AUTORIZADO') {
+      const hayTraslape = this.hayTraslapeLocal(
+        this.editingPermiso!.empleado_id,
+        this.solicitudForm.fecha_inicio!,
+        this.solicitudForm.fecha_fin!,
+        this.solicitudForm.fecha_fin_extendida,
+        this.editingPermiso!.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        return;
+      }
+    }
+
+    // Actualizar directamente sin verificar turnos
+    this.ejecutarActualizarPermiso();
   }
 
   private ejecutarActualizarPermiso() {
@@ -533,12 +734,21 @@ export class PermisosComponent implements OnInit {
       data.tipo_permiso_id = null;
     } else {
       data.tipo_permiso_otro = null;
-      data.mensaje_otro = null;
     }
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
+
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
-        if (res.success) { this.volverATabla(); }
+        if (res.success) {
+          // Actualizar también el objeto local para que imprimir desde tabla use datos frescos
+          const idx = this.permisos.findIndex(p => p.id === this.editingPermiso!.id);
+          if (idx !== -1 && res.data) {
+            this.permisos[idx] = { ...this.permisos[idx], ...res.data, firmas_config: data.firmas_config };
+          }
+          this.volverATabla();
+        }
         else this.error = res.error || 'Error actualizando';
       },
       error: () => { this.error = 'Error de conexión'; this.loading = false; }
@@ -547,63 +757,32 @@ export class PermisosComponent implements OnInit {
 
   // ─── ESTADO ───────────────────────────────────────────────────────
   cambiarEstadoEnEdicion(estado: 'AUTORIZADO' | 'RECHAZADO' | 'PENDIENTE') {
+    // Solo actualiza el formulario local — el backend se llama al dar "Actualizar"
     this.solicitudForm.estado = estado;
-    if (this.editingPermiso?.id) {
-      const permisoTemp = { ...this.editingPermiso, estado: this.solicitudForm.estado as any };
-      if (estado === 'AUTORIZADO') {
-        this.permisosSvc.getTurnosEnRango(permisoTemp.empleado_id, permisoTemp.fecha_inicio, permisoTemp.fecha_fin).subscribe({
-          next: (res) => {
-            if (res.tieneTurnos) {
-              const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-              if (!confirm(`⚠️ Tiene turno(s) asignado(s):\n${turnos}\n\n¿Autorizar de todas formas?`)) {
-                this.solicitudForm.estado = this.editingPermiso!.estado;
-                return;
-              }
-            }
-            this.ejecutarCambioEstado(permisoTemp, estado);
-          },
-          error: () => this.ejecutarCambioEstado(permisoTemp, estado)
-        });
-      } else {
-        this.ejecutarCambioEstado(permisoTemp, estado);
-      }
-    }
   }
 
   cambiarEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     if (estado === 'AUTORIZADO') {
-      this.permisosSvc.getTurnosEnRango(permiso.empleado_id, permiso.fecha_inicio, permiso.fecha_fin).subscribe({
-        next: (res) => {
-          if (res.tieneTurnos) {
-            const turnos = res.turnos.map((t: any) => `${t.nombre_turno} (${t.fecha_inicio} - ${t.fecha_fin})`).join(', ');
-            if (!confirm(`⚠️ ${permiso.nombre_completo} tiene turno(s) asignado(s) en este período:\n${turnos}\n\n¿Desea autorizar el permiso de todas formas?`)) return;
-          }
-          this.ejecutarCambioEstado(permiso, estado);
-        },
-        error: () => this.ejecutarCambioEstado(permiso, estado)
-      });
-    } else {
-      this.ejecutarCambioEstado(permiso, estado);
+      const hayTraslape = this.hayTraslapeLocal(
+        permiso.empleado_id,
+        permiso.fecha_inicio,
+        permiso.fecha_fin,
+        permiso.fecha_fin_extendida,
+        permiso.id
+      );
+      if (hayTraslape) {
+        this.error = 'El empleado ya tiene un permiso autorizado que se traslapa con estas fechas.';
+        setTimeout(() => this.error = null, 5000);
+        return;
+      }
     }
+    this.ejecutarCambioEstado(permiso, estado);
   }
 
   private ejecutarCambioEstado(permiso: Permiso, estado: 'PENDIENTE' | 'AUTORIZADO' | 'RECHAZADO') {
     this.loading = true;
     this.permisosSvc.updateEstadoPermiso(permiso.id!, estado).subscribe({
-      next: (res) => {
-        this.loading = false;
-        if (res.success) this.loadPermisos();
-        else this.error = res.error || 'Error';
-      },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
-    });
-  }
-
-  eliminarPermiso(permiso: Permiso) {
-    if (!confirm(`¿Eliminar permiso de ${permiso.nombre_completo}?`)) return;
-    this.loading = true;
-    this.permisosSvc.deletePermiso(permiso.id!).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadPermisos();
         else this.error = res.error || 'Error';
@@ -638,15 +817,22 @@ export class PermisosComponent implements OnInit {
       : this.permisosSvc.createTipoPermiso(this.tipoPermisoForm);
 
     op.subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) {
           this.editingTipoPermiso = null;
           this.tipoPermisoForm = this.initTipoForm();
           this.loadTiposPermiso();
-        } else this.error = res.error || 'Error';
+        } else {
+          this.error = res.error || 'Error';
+          setTimeout(() => this.error = null, 4000);
+        }
       },
-      error: () => { this.error = 'Error de conexión'; this.loading = false; }
+      error: () => {
+        this.error = 'Ya existe este tipo de permiso';
+        this.loading = false;
+        setTimeout(() => this.error = null, 4000);
+      }
     });
   }
 
@@ -654,16 +840,18 @@ export class PermisosComponent implements OnInit {
     if (!confirm(`¿Eliminar "${tipo.nombre}"?`)) return;
     this.loading = true;
     this.permisosSvc.deleteTipoPermiso(tipo.id!).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         this.loading = false;
         if (res.success) this.loadTiposPermiso();
         else this.error = res.error || 'Error';
       },
-      error: (err) => {
+      error: (err: any) => {
         this.loading = false;
         const msg = err?.error?.error || '';
         if (err.status === 409 || msg.includes('está siendo usado')) {
           this.avisoModal = msg || `El tipo "${tipo.nombre}" está siendo usado en permisos existentes y no puede eliminarse.`;
+        } else if (err.status === 403) {
+          this.avisoModal = msg || `El tipo "${tipo.nombre}" no puede eliminarse.`;
         } else {
           this.error = 'Error de conexión';
         }
@@ -671,15 +859,19 @@ export class PermisosComponent implements OnInit {
     });
   }
 
-  // ─── IMPRIMIR ─────────────────────────────────────────────────────
+  // ─── IMPRIMIR 
   imprimirCarta() {
-    const cartaEl = document.querySelector('.carta-hoja');
+    // Buscar la carta dentro del contenedor oculto de impresión
+    const contenedor = document.querySelector('[data-print-container]');
+    const cartaEl = contenedor
+      ? contenedor.querySelector('.carta-hoja')
+      : document.querySelector('.carta-hoja');
+
     if (!cartaEl) { window.print(); return; }
 
     const win = window.open('', '_blank', 'width=816,height=1056');
     if (!win) { window.print(); return; }
 
-    // Recoger todos los estilos de la página actual
     const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map(el => el.outerHTML).join('\n');
 
@@ -689,37 +881,27 @@ export class PermisosComponent implements OnInit {
   <meta charset="utf-8">
   ${estilos}
   <style>
-    @page { size: letter portrait; margin: 10mm 15mm; margin-header: 0; margin-footer: 0; }
+    @page {
+      size: letter portrait;
+      margin: 10mm 15mm;
+      margin-top: 0mm;
+      margin-bottom: 0mm;
+    }
+    @page :first { margin-top: 0; }
+    @page :left { margin-left: 10mm; }
+    @page :right { margin-right: 10mm; }
     head { display: none !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
     html { background: #fff !important; }
-    .carta-hoja {
-      width: 100%; height: calc(100vh - 20mm);
-      display: flex; flex-direction: column;
-      border: none; margin: 0; max-width: 100%;
-      font-size: 10pt; line-height: 1.4; color: #111;
-    }
-    .carta-copia-bloque {
-      flex: 1 1 0; min-height: 0; padding: 5mm 0;
-      display: flex; flex-direction: column;
-      justify-content: space-between; overflow: hidden; box-sizing: border-box;
-    }
-    .carta-copia-bloque + .carta-copia-bloque { margin-top: 8mm; }
-    .carta-separador {
-      flex: 0 0 12mm; border-top: 1.5px dashed #444; border-bottom: none;
-      text-align: center; font-size: 14pt; display: flex;
-      align-items: flex-start; justify-content: center;
-      font-family: 'Segoe UI', sans-serif; color: #555; padding: 4mm 0 0;
-      margin-top: 4mm;
-    }
+    .carta-hoja { width: 100%; height: 100vh; display: flex; flex-direction: column; border: none; margin: 0; max-width: 100%; font-size: 10pt; line-height: 1.4; color: #111; overflow: hidden; }
+    .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
+    .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
     .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
-    .carta-hro-logo-left { display:flex; align-items:flex-start; gap:8px; }
-    .logo-escudo { font-size:26pt; line-height:1; }
-    .carta-hro-inst { font-size:7.5pt; line-height:1.3; }
+    .carta-hro-logo-left { display:flex; align-items:flex-start; }
+    .carta-logo-img { height:50px; width:auto; object-fit:contain; }
     .carta-hro-logo-right { text-align:right; }
-    .hro-text { font-size:28pt; font-weight:900; font-style:italic; letter-spacing:-2px; line-height:1; display:block; }
-    .hro-sub { font-size:6pt; letter-spacing:1px; text-align:center; margin-top:2px; }
+    .carta-hro-inst-right { font-size:7pt; line-height:1.5; text-align:right; color:#111; }
     .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
     .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
     .fecha-mes { min-width:80px; }
@@ -729,7 +911,7 @@ export class PermisosComponent implements OnInit {
     .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
     .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
     .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:9pt; }
+    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:12pt; }
     .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
     .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
     .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
@@ -740,7 +922,7 @@ export class PermisosComponent implements OnInit {
     .dias-autorizacion { font-size:9pt; }
     .carta-solicitud-line { margin-bottom:3px !important; }
     .carta-tipo-permiso { margin-bottom:3px !important; }
-    .carta-meta-impresion { display:flex; justify-content:space-between; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
+    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
   </style>
 </head>
 <body>${cartaEl.outerHTML}</body>
@@ -750,7 +932,7 @@ export class PermisosComponent implements OnInit {
     setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
-  // ─── IMPRIMIR DESDE TABLA ─────────────────────────────────────────
+  // ─── IMPRIMIR DESDE TABLA 
   imprimirPermisoDirecto(permiso: Permiso) {
     const emp = this.empleados.find(e => e.id === permiso.empleado_id);
     const rolNombre = emp ? (this.roles.find(r => r.id === emp.rol_id)?.nombre || '') : '';
@@ -781,7 +963,7 @@ export class PermisosComponent implements OnInit {
     const horas24 = ahora.getHours();
     const ampm = horas24 >= 12 ? 'PM' : 'AM';
     const horas12 = horas24 % 12 || 12;
-    const fechaHoraImpresion = `${pad(ahora.getDate())}/${pad(ahora.getMonth()+1)}/${ahora.getFullYear()} ${pad(horas12)}:${pad(ahora.getMinutes())} ${ampm}`;
+    const fechaHoraImpresion = `${pad(ahora.getDate())}/${pad(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${pad(horas12)}:${pad(ahora.getMinutes())} ${ampm}`;
 
     this.cartaData = {
       nombreEmpleado: permiso.nombre_completo || '',
@@ -792,7 +974,9 @@ export class PermisosComponent implements OnInit {
       mes: meses[fechaCarta.getMonth()],
       anio: String(fechaCarta.getFullYear()),
       tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
-      mensaje: permiso.tipo_permiso_id ? (tipo?.mensaje_carta || '') : (permiso.mensaje_otro || ''),
+      mensaje: permiso.tipo_permiso_id 
+        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '') 
+        : (permiso.mensaje_otro || ''),
       fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
       diasSolicitados: dias,
@@ -802,29 +986,42 @@ export class PermisosComponent implements OnInit {
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
       autorizadoEn: (() => {
-        const ae = permiso.autorizado_en;
+        // Si está autorizado usar autorizado_en, si no usar creado_en como referencia
+        const ae = permiso.autorizado_en || permiso.creado_en;
         if (!ae) return '';
-        // Asegurar que se interprete como UTC agregando Z si no la tiene
         const isoStr = String(ae).includes('Z') || String(ae).includes('+') ? String(ae) : String(ae).replace(' ', 'T') + 'Z';
         const d = new Date(isoStr);
         if (isNaN(d.getTime())) return '';
-        const p2 = (n: number) => String(n).padStart(2,'0');
+        const p2 = (n: number) => String(n).padStart(2, '0');
         // Convertir a Guatemala UTC-6
         const gt = new Date(d.getTime() - 6 * 60 * 60 * 1000);
         const h = gt.getUTCHours(), ampm = h >= 12 ? 'PM' : 'AM';
-        return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth()+1)}/${gt.getUTCFullYear()} ${p2(h%12||12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
+        return `${p2(gt.getUTCDate())}/${p2(gt.getUTCMonth() + 1)}/${gt.getUTCFullYear()} ${p2(h % 12 || 12)}:${p2(gt.getUTCMinutes())} ${ampm}`;
       })(),
+      fechaFinExtendida: permiso.fecha_fin_extendida
+        ? (() => { const [y, m, d] = (permiso.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
+        : '',
+      motivoExtension: permiso.motivo_extension || '',
+      diasAdicionales: permiso.dias_adicionales || null,
       fechaHoraImpresion
     };
 
     this.imprimiendoDesdeTabla = true;
+
+    // Usar las firmas actuales del componente (no recargar desde BD)
+    // Si se está editando este permiso, las firmas ya están en this.firmas
+    // Si se imprime desde la tabla sin editar, cargar desde BD
+    if (!this.editingPermiso || this.editingPermiso.id !== permiso.id) {
+      this.resetFirmas(permiso);
+    }
+
     setTimeout(() => {
       this.imprimirCarta();
-      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1000);
-    }, 150);
+      setTimeout(() => { this.imprimiendoDesdeTabla = false; }, 1500);
+    }, 300);
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────
+  // ─── HELPERS 
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';
@@ -846,12 +1043,32 @@ export class PermisosComponent implements OnInit {
     return hoy >= inicio && hoy <= fin;
   }
 
-  /** Retorna true si fecha_fin ya pasó */
+  /** Retorna true si la fecha efectiva de fin ya pasó (usa fecha_fin_extendida si existe) */
   yaFinalizo(permiso: Permiso): boolean {
     const hoy = new Date().toISOString().substring(0, 10);
-    const fin = (permiso.fecha_fin as any instanceof Date)
-      ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
-      : String(permiso.fecha_fin).substring(0, 10);
-    return hoy > fin;
+    // Usar fecha_fin_extendida si existe, si no fecha_fin
+    const finEfectivo = permiso.fecha_fin_extendida
+      ? String(permiso.fecha_fin_extendida).substring(0, 10)
+      : (permiso.fecha_fin as any instanceof Date)
+        ? (permiso.fecha_fin as any).toISOString().substring(0, 10)
+        : String(permiso.fecha_fin).substring(0, 10);
+    return hoy > finEfectivo;
+  }
+
+  private hayTraslapeLocal(empleado_id: number, inicio: string, fin: string, finExt?: string | null, excludeId?: number): boolean {
+    const newS = inicio.substring(0, 10);
+    const newE = (finExt || fin).substring(0, 10);
+
+    return this.permisos.some(p => {
+      if (p.empleado_id !== empleado_id) return false;
+      if (p.estado !== 'AUTORIZADO') return false;
+      if (excludeId && p.id === excludeId) return false;
+
+      const oldS = String(p.fecha_inicio).substring(0, 10);
+      const oldE = String(p.fecha_fin_extendida || p.fecha_fin).substring(0, 10);
+
+      // Overlap: S1 <= E2 AND S2 <= E1
+      return newS <= oldE && oldS <= newE;
+    });
   }
 }
