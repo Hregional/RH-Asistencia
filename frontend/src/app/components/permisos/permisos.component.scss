@@ -409,8 +409,16 @@
 }
 .action-buttons {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 3px;
+  flex-wrap: nowrap;
+  align-items: center;
+
+  .btn-small {
+    padding: 4px 7px;
+    font-size: 13px;
+    min-width: 28px;
+    white-space: nowrap;
+  }
 }
 
 /* Paginación */
