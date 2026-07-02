@@ -44,8 +44,8 @@
           <th>Nombre</th>
           <th>Área</th>
           <th>Tipo de Permiso</th>
-          <th>F. Inicio</th>
-          <th>F. Fin</th>
+          <th>Fecha de Inicio</th>
+          <th>Fecha de Finalización</th>
           <th>Días Hábiles</th>
           <th>Días Ext.</th>
           <th>Fecha Fin Ext.</th>
@@ -56,7 +56,7 @@
       <tbody>
         <tr *ngFor="let permiso of paginatedPermisos">
           <td>{{ permiso.nombre_completo }}</td>
-          <td class="area-cell">{{ formatearArea(permiso.area_nombre) }}</td>
+          <td>{{ permiso.area_nombre || '—' }}</td>
           <td>{{ permiso.tipo_permiso_nombre || permiso.tipo_permiso_otro || '—' }}</td>
           <td>{{ permiso.fecha_inicio | date:'dd/MM/yyyy' }}</td>
           <td>{{ permiso.fecha_fin | date:'dd/MM/yyyy' }}</td>
@@ -70,29 +70,23 @@
             </span>
             <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
           </td>
-          <td class="action-cell">
-            <div class="action-buttons">
-              <ng-container *ngIf="!yaFinalizo(permiso)">
-                <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small"
-                  (click)="cambiarEstado(permiso, 'AUTORIZADO')" title="Autorizar" aria-label="Autorizar">
-                  ✓
-                </button>
-                <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small"
-                  (click)="cambiarEstado(permiso, 'RECHAZADO')" title="Rechazar" aria-label="Rechazar">
-                  ✕
-                </button>
-                <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)" title="Editar"
-                  aria-label="Editar">✎</button>
-              </ng-container>
-              <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
-              <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)" class="btn btn-secondary btn-small"
-                (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta"
-                aria-label="Imprimir carta">🖨️</button>
-              <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
-                (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta"
-                aria-label="Reimprimir carta">🖨️</button>
-              <span *ngIf="yaFinalizo(permiso)" class="action-buttons-placeholder" aria-hidden="true"></span>
-            </div>
+          <td class="action-buttons">
+            <ng-container *ngIf="!yaFinalizo(permiso)">
+              <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small"
+                (click)="cambiarEstado(permiso, 'AUTORIZADO')">
+                Autorizar
+              </button>
+              <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small"
+                (click)="cambiarEstado(permiso, 'RECHAZADO')">
+                Rechazar
+              </button>
+              <button class="btn btn-primary btn-small" (click)="irAEditarPermiso(permiso)">Editar</button>
+            </ng-container>
+            <!-- Imprimir: PENDIENTE = "Imprimir", AUTORIZADO = "Reimprimir" -->
+            <button *ngIf="permiso.estado === 'PENDIENTE' && !yaFinalizo(permiso)" class="btn btn-secondary btn-small"
+              (click)="imprimirPermisoDirecto(permiso)" title="Imprimir carta">🖨️ Imprimir</button>
+            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small"
+              (click)="imprimirPermisoDirecto(permiso)" title="Reimprimir carta">🖨️ Reimprimir</button>
           </td>
         </tr>
         <tr *ngIf="filteredPermisos.length === 0">
@@ -310,9 +304,9 @@
       <div class="form-row">
         <div class="form-group">
           <label>Descripción adicional {{ esVacaciones ? '*' : '(Opcional)' }}</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
-            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" maxlength="100"
-            style="min-height:38px;"></textarea>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" 
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" 
+            maxlength="100" style="min-height:38px;"></textarea>
         </div>
       </div>
     </ng-container>
@@ -463,12 +457,10 @@
             <td>{{ tipo.nombre }}</td>
             <td>{{ tipo.dias_permitidos }}</td>
             <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
-            <td class="action-cell">
-              <div class="action-buttons">
-                <button class="btn btn-primary btn-small" (click)="editarTipoPermiso(tipo)">Editar</button>
-                <button *ngIf="tipo.nombre.toLowerCase() !== 'vacaciones'" class="btn btn-danger btn-small"
-                  (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
-              </div>
+            <td class="action-buttons">
+              <button class="btn btn-primary btn-small" (click)="editarTipoPermiso(tipo)">Editar</button>
+              <button *ngIf="tipo.nombre.toLowerCase() !== 'vacaciones'" class="btn btn-danger btn-small"
+                (click)="eliminarTipoPermiso(tipo)">Eliminar</button>
             </td>
           </tr>
           <tr *ngIf="tiposPermiso.length === 0">

@@ -42,11 +42,9 @@
                 <td>{{ tipo.nombre }}</td>
                 <td>{{ tipo.dias_permitidos }}</td>
                 <td class="mensaje-cell">{{ tipo.mensaje_carta || '—' }}</td>
-                <td class="action-cell">
-                    <div class="action-buttons">
-                        <button class="btn btn-primary btn-small" (click)="editar.emit(tipo)">Editar</button>
-                        <button class="btn btn-danger btn-small" (click)="eliminar.emit(tipo)">Eliminar</button>
-                    </div>
+                <td class="action-buttons">
+                    <button class="btn btn-primary btn-small" (click)="editar.emit(tipo)">Editar</button>
+                    <button class="btn btn-danger btn-small" (click)="eliminar.emit(tipo)">Eliminar</button>
                 </td>
             </tr>
             <tr *ngIf="tiposPermiso.length === 0">
