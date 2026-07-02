@@ -2,3 +2,5 @@
 .vscode/
 backups/
 Hospital.sql
+backend/node_modules/
+frontend/node_modules/
