@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReportesService } from '../../services/reportes.service';
 import { AuthService } from '../../services/auth.service';
+import { KeycloakService } from 'keycloak-angular';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
@@ -17,7 +18,15 @@ import autoTable from 'jspdf-autotable';
 export class ReportesComponent implements OnInit {
   private repService = inject(ReportesService);
   private authService = inject(AuthService);
+  private kc = inject(KeycloakService);
+
   isSuperAdmin: boolean = false;
+  /** Puede ver el módulo de reportes de permisos (superadmin, admin, permisos — NO marcaje solo) */
+  puedeVerPermisos: boolean = false;
+  /** Solo superadmin puede usar funciones retroactivas */
+  puedeVerRetroactivo: boolean = false;
+  /** El usuario SOLO tiene rol permisos — sin acceso a otros tipos de reporte */
+  soloPermisos: boolean = false;
   empleadoBusqueda: string = '';
   empleadosEncontrados: any[] = [];
   empleadoSeleccionado: any = null;
@@ -43,7 +52,30 @@ export class ReportesComponent implements OnInit {
   cargando = false;
 
   async ngOnInit() {
-    this.isSuperAdmin = await this.authService.hasRole('superadministrador');
+    // Obtener roles normalizados desde el token
+    const roles = (this.kc.getUserRoles(true) || []).map((r: string) => r.toLowerCase());
+
+    this.isSuperAdmin        = roles.includes('superadmin');
+    this.puedeVerRetroactivo = roles.includes('superadmin');
+    // permisos lo ven: superadmin, admin, permisos — NO el rol "marcaje" exclusivo
+    this.puedeVerPermisos = roles.includes('superadmin')
+                          || roles.includes('admin')
+                          || roles.includes('permisos');
+
+    // Si el rol solo puede ver permisos, arrancar directamente en ese reporte
+    const soloPermisos = this.puedeVerPermisos
+                      && !roles.includes('superadmin')
+                      && !roles.includes('admin')
+                      && !roles.includes('marcaje');
+    this.soloPermisos = soloPermisos;
+    if (soloPermisos) {
+      this.tipoReporte = 'permisos';
+      this.estadoPermisoFiltro = 'AUTORIZADO';
+      this.tipoFiltroPermisos  = 'mes';
+      this.mesPermisos = new Date().toISOString().substring(0, 7);
+      this.onMesPermisosChange();
+    }
+
     this.inicializarFechasPorDefecto();
     this.repService.getAreas().subscribe({
       next: (res) => {

@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../db.js');
-const { requireAuth, requireRRHHorJefe } = require('../middlewares/auth.js'); 
+const { requireAuth, requireAnyRole } = require('../middlewares/auth.js'); 
+
+const requireAdminOrSuperadmin = requireAnyRole('superadmin', 'admin');
 
 const router = express.Router();
 
@@ -55,7 +57,7 @@ router.post('/', async (req, res) => {
 });
 
 // POST /api/areas/:areaId/supervisores marcar empleado como supervisor de un area
-router.post('/:areaId/supervisores', requireAuth, requireRRHHorJefe, async (req, res) => {
+router.post('/:areaId/supervisores', requireAuth, requireAdminOrSuperadmin, async (req, res) => {
   try {
     const areaId = Number(req.params.areaId);
     const { empleado_id, es_titular = 0, desde = null, hasta = null } = req.body || {};
@@ -91,7 +93,7 @@ router.post('/:areaId/supervisores', requireAuth, requireRRHHorJefe, async (req,
 });
 
 // POST /api/areas/:areaId/empleados/lote
-router.post('/:areaId/empleados/lote', requireAuth, requireRRHHorJefe, async (req, res) => {
+router.post('/:areaId/empleados/lote', requireAuth, requireAdminOrSuperadmin, async (req, res) => {
   const conn = await db.getConnection();
   try {
     const areaId = Number(req.params.areaId);
@@ -127,7 +129,7 @@ router.post('/:areaId/empleados/lote', requireAuth, requireRRHHorJefe, async (re
 
 
 // DELETE /api/areas/:areaId/supervisores/:empleadoId 
-router.delete('/:areaId/supervisores/:empleadoId', requireAuth, requireRRHHorJefe, async (req, res) => {
+router.delete('/:areaId/supervisores/:empleadoId', requireAuth, requireAdminOrSuperadmin, async (req, res) => {
   try {
     const areaId = Number(req.params.areaId);
     const empleadoId = Number(req.params.empleadoId);

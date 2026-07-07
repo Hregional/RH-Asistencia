@@ -578,8 +578,12 @@ export class EmpleadosComponent implements OnInit {
     return [...realm, ...client].map(r => r.toLowerCase()).includes(role.toLowerCase());
   }
 
-  canCreateEdit(): boolean { return this.hasRole('rrhh', this.userInfo); }
-  canDelete(): boolean { return this.hasRole('rrhh', this.userInfo); }
+  canCreateEdit(): boolean {
+    return this.allRolesLower.some(r => ['superadmin', 'admin', 'empleados', 'marcaje', 'permisos', 'rrhh'].includes(r));
+  }
+  canDelete(): boolean {
+    return this.allRolesLower.some(r => ['superadmin', 'admin', 'empleados', 'marcaje', 'permisos', 'rrhh'].includes(r));
+  }
 
   //  Métodos CRUD de Empleados
   deactivateEmpleado(emp: any) {

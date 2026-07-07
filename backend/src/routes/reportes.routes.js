@@ -387,48 +387,43 @@ router.get('/buscar-empleados', requireAuth, async (req, res) => {
 // Ruta para ejecutar manualmente la sincronización biométrica
 router.post('/actualizar-biometrico', requireAuth, async (req, res) => {
   try {
-    // Ruta al script de sincronización
     const scriptPath = path.join(__dirname, '../scripts/sync_biometric_logs.js');
 
-    // Ejecutar el script
     exec(`node "${scriptPath}"`, {
       cwd: path.join(__dirname, '..'),
       env: { ...process.env, NODE_PATH: '.' }
     }, (error, stdout, stderr) => {
+      // Aunque el script falle por conectividad al biométrico, contamos los eventos del día
       if (error) {
-        console.error('Error ejecutando sync_biometric_logs:', error);
-        return res.status(500).json({
-          success: false,
-          message: 'Error ejecutando la sincronización',
-          error: error.message
-        });
+        console.warn('Script sync_biometric_logs terminó con errores (puede ser conectividad):', error.message);
       }
-
       if (stderr) {
-        console.warn('Advertencias en sincronización:', stderr);
+        console.warn('Stderr en sincronización:', stderr);
       }
 
-      // Contar eventos recién insertados (opcional)
+      // Contar eventos del día independientemente del resultado del script
       db.query(`
-          SELECT COUNT(*) as total 
-          FROM registros_asistencia 
-          WHERE DATE(creado_en) = CURDATE() 
+        SELECT COUNT(*) as total
+        FROM registros_asistencia
+        WHERE DATE(creado_en) = CURDATE()
           AND origen = 'BIOMETRICO'
-        `).then(([rows]) => {
+      `).then(([rows]) => {
         const totalEventos = rows[0]?.total || 0;
+        const tieneError = !!error;
 
         res.json({
           success: true,
-          message: 'Sincronización completada correctamente',
-          totalEventos: totalEventos,
-          output: stdout
+          message: tieneError
+            ? `Sincronización completada con advertencias (${totalEventos} eventos hoy). Verifique conectividad con el biométrico.`
+            : 'Sincronización completada correctamente',
+          totalEventos,
+          advertencia: tieneError ? error.message : undefined
         });
       }).catch(countError => {
         console.error('Error contando eventos:', countError);
         res.json({
           success: true,
-          message: 'Sincronización completada (error contando eventos)',
-          output: stdout
+          message: 'Sincronización ejecutada (no se pudo contar eventos)',
         });
       });
     });

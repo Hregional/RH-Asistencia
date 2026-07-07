@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-const { requireAuth, requireRRHHorJefe } = require('./src/middlewares/auth.js');
+const { requireAuth, requireAnyRole } = require('./src/middlewares/auth.js');
 const { testConnectionAll } = require('./src/services/biometric/hikvision.service.js');
 
 
@@ -19,6 +19,7 @@ const attachActor = require('./src/middlewares/actor.js');
 const auditRouter = require('./src/routes/audit.routes.js');
 const reportesRouter = require('./src/routes/reportes.routes.js');
 const permisosRouter = require('./src/routes/permisos.routes.js');
+const retroactivoRouter = require('./src/routes/retroactivo.routes.js');
 const biometricPushRoutes = require('./src/routes/biometric.push.routes.js');
 require('./src/scripts/scheduler.js');
 
@@ -38,16 +39,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/health', healthRouter);
 
 // Rutas protegidas
-app.use('/api/biometric', requireAuth, requireRRHHorJefe, biometricRouter);
-app.use('/api/empleados', requireAuth, requireRRHHorJefe, empleadosRouter);
-app.use('/api/roles', requireAuth, requireRRHHorJefe, rolesRoutes);
-app.use('/api/areas', requireAuth, requireRRHHorJefe, areasRoutes);
-app.use('/api/dashboard', requireAuth, dashboardRouter);
-app.use('/api/turnos', requireAuth, requireRRHHorJefe, turnosRoutes);
-app.use('/api/asignaciones', requireAuth, requireRRHHorJefe, asignacionesRoutes);
-app.use('/api/audit', requireAuth, attachActor, auditRouter);
-app.use('/api/reportes', requireAuth, requireRRHHorJefe, reportesRouter);
-app.use('/api/permisos', requireAuth, requireRRHHorJefe, permisosRouter);
+app.use('/api/biometric',    requireAuth, requireAnyRole('superadmin','admin','marcaje'), biometricRouter);
+app.use('/api/empleados',    requireAuth, requireAnyRole('superadmin','admin','empleados','marcaje','permisos'), empleadosRouter);
+app.use('/api/roles',        requireAuth, requireAnyRole('superadmin','admin','empleados','marcaje','permisos'), rolesRoutes);
+app.use('/api/areas',        requireAuth, requireAnyRole('superadmin','admin','empleados','marcaje','permisos'), areasRoutes);
+app.use('/api/dashboard',    requireAuth, dashboardRouter);
+app.use('/api/turnos',       requireAuth, requireAnyRole('superadmin','admin','marcaje'), turnosRoutes);
+app.use('/api/asignaciones', requireAuth, requireAnyRole('superadmin','admin','marcaje'), asignacionesRoutes);
+app.use('/api/audit',        requireAuth, attachActor, auditRouter);
+app.use('/api/reportes',     requireAuth, requireAnyRole('superadmin','admin','marcaje','permisos'), reportesRouter);
+app.use('/api/permisos',     requireAuth, requireAnyRole('superadmin','admin','permisos','empleados','marcaje'), permisosRouter);
+app.use('/api/retroactivo',  requireAuth, requireAnyRole('superadmin'), retroactivoRouter);
 app.use('/api', biometricPushRoutes);
 
 
