@@ -1,4 +1,4 @@
-<div class="sidebar">
+<div class="sidebar" *ngIf="vm$ | async as vm">
   <!-- Encabezado -->
   <div class="sidebar-header">
     <div class="logo">HRO</div>
@@ -11,57 +11,95 @@
   <!-- Menú principal -->
   <nav class="sidebar-nav">
     <ul>
-      <li>
+
+      <!-- Dashboard — visible para todos -->
+      <li *ngIf="vm.canVerDashboard">
         <a routerLink="/dashboard" routerLinkActive="active">
           <i class="fas fa-home"></i><span>Dashboard</span>
         </a>
       </li>
 
-      <li>
+      <!-- Empleados — superadmin, admin, empleados -->
+      <li *ngIf="vm.canVerEmpleados">
         <a routerLink="/empleados" routerLinkActive="active">
           <i class="fas fa-users"></i><span>Empleados</span>
         </a>
       </li>
-      <li>
+
+      <!-- Asignar Turnos — superadmin, admin, marcaje -->
+      <li *ngIf="vm.canVerTurnos">
         <a routerLink="/asignar-turnos" routerLinkActive="active">
           <i class="fas fa-clock"></i><span>Asignar Turnos</span>
         </a>
       </li>
-      <li>
+
+      <!-- Permisos — superadmin, admin, permisos -->
+      <li *ngIf="vm.canVerPermisos">
         <a routerLink="/permisos" routerLinkActive="active">
           <i class="fas fa-file-signature"></i><span>Permisos</span>
         </a>
       </li>
-      <li>
+
+      <!-- Gestión de Turnos — superadmin, admin, marcaje -->
+      <li *ngIf="vm.canVerTurnos">
         <a routerLink="/turnos" routerLinkActive="active">
           <i class="fas fa-calendar-plus"></i><span>Gestión de Turnos</span>
         </a>
       </li>
 
-      <li>
+      <!-- Reportes — superadmin, admin, marcaje, permisos -->
+      <li *ngIf="vm.canVerReportes">
         <a routerLink="/reportes" routerLinkActive="active">
           <i class="fas fa-file-alt"></i><span>Reportes</span>
         </a>
       </li>
-      <li class="menu-title">
-        <span>Catálogos</span>
-      </li>
 
-      <li>
-        <a routerLink="/departamentos" routerLinkActive="active">
-          <i class="fas fa-building"></i><span>Departamentos</span>
+      <!-- Catálogos — solo superadmin y admin -->
+      <ng-container *ngIf="vm.canVerCatalogos">
+        <li class="menu-title">
+          <span>Catálogos</span>
+        </li>
+        <li>
+          <a routerLink="/departamentos" routerLinkActive="active">
+            <i class="fas fa-building"></i><span>Departamentos</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/puestos" routerLinkActive="active">
+            <i class="fas fa-briefcase"></i><span>Puestos</span>
+          </a>
+        </li>
+      </ng-container>
+
+      <!-- Retroactivo — solo superadmin -->
+      <li *ngIf="vm.isSuperadmin">
+        <a routerLink="/retroactivo" routerLinkActive="active">
+          <i class="fas fa-history"></i><span>Retroactivo</span>
         </a>
       </li>
-
-      <li>
-        <a routerLink="/puestos" routerLinkActive="active">
-          <i class="fas fa-briefcase"></i><span>Puestos</span>
-        </a>
-      </li>
-
 
     </ul>
   </nav>
+
+  <!-- Info del usuario + rol activo -->
+  <div class="sidebar-user-info" *ngIf="vm.ok && vm.userName">
+    <div class="user-avatar">{{ vm.initials }}</div>
+    <div class="user-details">
+      <span class="user-name">{{ vm.fullName || vm.userName }}</span>
+      <span class="user-role-badge"
+        [class.badge-superadmin]="vm.isSuperadmin"
+        [class.badge-admin]="vm.isAdmin && !vm.isSuperadmin"
+        [class.badge-marcaje]="vm.isMarcaje"
+        [class.badge-permisos]="vm.isPermisos"
+        [class.badge-empleados]="vm.isEmpleados">
+        {{ vm.isSuperadmin ? 'Superadmin' :
+           vm.isAdmin      ? 'Admin' :
+           vm.isMarcaje    ? 'Marcaje' :
+           vm.isPermisos   ? 'Permisos' :
+           vm.isEmpleados  ? 'Empleados' : 'Usuario' }}
+      </span>
+    </div>
+  </div>
 
   <!-- Botón de cierre -->
   <div class="sidebar-bottom">
