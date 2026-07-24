@@ -243,3 +243,58 @@
     pointer-events: all;
   }
 }
+
+/* ─── Info del usuario en sidebar ─── */
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin-top: auto;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 12px;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badges de rol */
+.user-role-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-superadmin { background: #8b5cf6; color: #fff; }
+.badge-admin      { background: #3b82f6; color: #fff; }
+.badge-marcaje    { background: #10b981; color: #fff; }
+.badge-permisos   { background: #f59e0b; color: #fff; }
+.badge-empleados  { background: #6b7280; color: #fff; }

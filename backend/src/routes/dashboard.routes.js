@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db.js');
-const { requireAuth, requireRRHHorJefe } = require('../middlewares/auth.js');
+const { requireAuth } = require('../middlewares/auth.js');
 
 // Helper: genera ultimos 7 días 
 function last7Days() {
@@ -18,7 +18,7 @@ function last7Days() {
 }
 
 // Ruta completa de resumen 
-router.get('/summary', requireAuth, requireRRHHorJefe, async (_req, res) => {
+router.get('/summary', requireAuth, async (_req, res) => {
   try {
     // 1) Personal activo 
     const [[{ c: personalActivo }]] = await db.query(

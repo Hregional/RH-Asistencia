@@ -1,9 +1,12 @@
 const express = require('express');
 const db = require('../db.js');
 const { audit } = require('../utils/audit.js');
-const { requireAuth } = require('../middlewares/auth.js');
+const { requireAuth, requireAnyRole } = require('../middlewares/auth.js');
 const { ensureActor } = require('../middlewares/actor.js');
 const router = express.Router();
+
+// Solo superadmin, admin y permisos pueden crear/editar/autorizar/eliminar
+const requireGestion = requireAnyRole('superadmin', 'admin', 'permisos');
 
 // MODELO - Tipos de Permiso
 
@@ -637,16 +640,16 @@ router.get('/reporte', requireAuth, async (req, res) => {
 
 // Tipos de permiso
 router.get('/tipos', TiposPermisoController.getAll);
-router.post('/tipos', TiposPermisoController.create);
-router.put('/tipos/:id', TiposPermisoController.update);
-router.delete('/tipos/:id', TiposPermisoController.delete);
+router.post('/tipos', requireGestion, TiposPermisoController.create);
+router.put('/tipos/:id', requireGestion, TiposPermisoController.update);
+router.delete('/tipos/:id', requireGestion, TiposPermisoController.delete);
 
 // Permisos
 router.get('/', requireAuth, PermisosController.getAll);
 router.get('/:id', requireAuth, PermisosController.getById);
-router.post('/', requireAuth, ensureActor, PermisosController.create);
-router.put('/:id', requireAuth, ensureActor, PermisosController.update);
-router.patch('/:id/estado', requireAuth, ensureActor, PermisosController.updateEstado);
-router.delete('/:id', requireAuth, ensureActor, PermisosController.delete);
+router.post('/', requireAuth, requireGestion, ensureActor, PermisosController.create);
+router.put('/:id', requireAuth, requireGestion, ensureActor, PermisosController.update);
+router.patch('/:id/estado', requireAuth, requireGestion, ensureActor, PermisosController.updateEstado);
+router.delete('/:id', requireAuth, requireGestion, ensureActor, PermisosController.delete);
 
 module.exports = router;

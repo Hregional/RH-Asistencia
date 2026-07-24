@@ -8,6 +8,7 @@ import { ReportesComponent } from './components/reportes/reportes.component';
 import { DepartamentosComponent } from './components/departamentos/departamentos/departamentos.component';
 import { PuestosComponent } from './components/puestos/puestos/puestos.component';
 import { PermisosComponent } from './components/permisos/permisos.component';
+import { RetroactivoComponent } from './components/retroactivo/retroactivo.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -67,6 +68,13 @@ export const routes: Routes = [
     component: PuestosComponent,
     canActivate: [AuthGuard],
     data: { roles: ['rrhh'] }
+  },
+
+  {
+    path: 'retroactivo',
+    component: RetroactivoComponent,
+    canActivate: [AuthGuard],
+    data: { roles: ['superadmin'] }
   },
 
   { path: '**', redirectTo: 'dashboard' }

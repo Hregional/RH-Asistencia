@@ -6,11 +6,11 @@
       <div class="filtro-group">
         <label>Tipo Reporte:</label>
         <select [(ngModel)]="tipoReporte" (change)="onTipoReporteChange()">
-          <option value="semana">Por Semana</option>
-          <option value="mes">Mes Completo</option>
-          <option value="biometricos">Eventos Biométricos</option>
-          <option value="horarios">Planificación de Horarios</option>
-          <option value="permisos">Permisos</option>
+          <option *ngIf="!soloPermisos" value="semana">Por Semana</option>
+          <option *ngIf="!soloPermisos" value="mes">Mes Completo</option>
+          <option *ngIf="!soloPermisos" value="biometricos">Eventos Biométricos</option>
+          <option *ngIf="!soloPermisos" value="horarios">Planificación de Horarios</option>
+          <option *ngIf="puedeVerPermisos" value="permisos">Permisos</option>
           <!-- <option value="todo">Todo el Historial</option> -->
         </select>
       </div>
@@ -32,7 +32,7 @@
           <option value="mes">Mes Completo</option>
           <option value="dia">Día Específico</option>
           <option value="rango">Rango de Fechas</option>
-          <option value="marcajes_anteriores">Marcajes Anteriores</option>
+          <option *ngIf="puedeVerRetroactivo" value="marcajes_anteriores">Marcajes Anteriores</option>
         </select>
       </div>
 
@@ -204,7 +204,7 @@
           <span>Generar</span>
         </button>
 
-        <button *ngIf="isSuperAdmin" (click)="actualizarBiometrico()" class="btn-biometrico"
+        <button *ngIf="puedeVerRetroactivo" (click)="actualizarBiometrico()" class="btn-biometrico"
           [disabled]="actualizandoBiometrico">
           <span *ngIf="!actualizandoBiometrico">Actualizar Biométrico</span>
           <span *ngIf="actualizandoBiometrico">Actualizando...</span>
@@ -243,7 +243,7 @@
         </button>
 
         <button (click)="sincronizarMarcajesAnteriores()"
-          *ngIf="isSuperAdmin && tipoReporte === 'biometricos' && tipoFiltroBiometricos === 'marcajes_anteriores'"
+          *ngIf="puedeVerRetroactivo && tipoReporte === 'biometricos' && tipoFiltroBiometricos === 'marcajes_anteriores'"
           class="btn-marcajes-anteriores" [disabled]="sincronizandoMarcajes || !fechaDesde || !fechaHasta">
           <span *ngIf="!sincronizandoMarcajes">Sincronizar Marcajes</span>
           <span *ngIf="sincronizandoMarcajes">Sincronizando...</span>
