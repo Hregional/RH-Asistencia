@@ -207,6 +207,8 @@
                 (change)="actualizarCarta()"> Empleado</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
                 (change)="actualizarCarta()"> Jefe Depto.</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
+                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
                 (change)="actualizarCarta()"> Jefe Personal</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion"
@@ -335,7 +337,7 @@
         <small *ngIf="diasExcedidos" class="warn-dias">Excede el límite permitido del tipo de permiso</small>
       </div>
 
-      <!-- CHECK POR DEFAULT PARA TENER LAS 4 FIRMAS POR DEFECTO CON OPCION A QUITAR ALGUNO QUE NO VAYA A FIRMAR-->
+      <!-- CHECK POR DEFAULT PARA TENER LAS FIRMAS POR DEFECTO CON OPCION A QUITAR ALGUNO QUE NO VAYA A FIRMAR-->
       <div class="form-group firmas-check-group">
         <label>Firmas en carta</label>
         <div class="firmas-checks">
@@ -343,6 +345,8 @@
             Empleado</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
             Jefe Depto.</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
+            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
               (change)="actualizarCarta()"> Jefe Personal</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()">
@@ -595,29 +599,14 @@
     <p class="carta-atentamente">Atentamente,</p>
   </div>
 
-  <div class="carta-hro-firmas">
-    <div class="firma-bloque" *ngIf="firmas.empleado">
-      <div class="firma-linea"></div>
-      <strong>{{ cartaData.nombreEmpleado | uppercase }}</strong>
-      <span class="firma-label">{{ cartaData.rol | uppercase }}</span>
-    </div>
-    <div class="firma-bloque" *ngIf="firmas.jefeDepto">
-      <div class="firma-linea"></div>
-      <span class="firma-label">JEFE DE DEPARTAMENTO</span>
-    </div>
-    <div class="firma-bloque" *ngIf="firmas.jefePersonal">
-      <div class="firma-linea"></div>
-      <span class="firma-label">JEFE DE PERSONAL</span>
-    </div>
-    <div class="firma-bloque" *ngIf="firmas.direccion">
-      <div class="firma-linea"></div>
-      <span class="firma-label">DIRECCIÓN EJECUTIVA</span>
-      <span class="firma-sub">Y/O SUBDIRECCIÓN</span>
-    </div>
-    <div class="firma-bloque" *ngIf="firmas.oficioRH">
-      <div class="firma-linea"></div>
-      <span class="firma-label">OFICINA DE RECURSOS HUMANOS</span>
-      <span class="firma-sub">Firma y Sello</span>
+  <div class="carta-hro-firmas-wrapper">
+    <div class="carta-hro-firmas" *ngFor="let fila of firmasFilas">
+      <div class="firma-bloque" *ngFor="let f of fila">
+        <div class="firma-linea"></div>
+        <strong *ngIf="f.key === 'empleado'">{{ cartaData.nombreEmpleado | uppercase }}</strong>
+        <span class="firma-label" *ngIf="f.label">{{ f.label }}</span>
+        <span class="firma-sub" *ngIf="f.sub">{{ f.sub }}</span>
+      </div>
     </div>
   </div>
 </ng-template>
