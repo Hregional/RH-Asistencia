@@ -1050,7 +1050,6 @@ export class PermisosComponent implements OnInit {
       this.firmasFilas = [activas.slice(0, 3), activas.slice(3)]; // 6 → 3+3
     }
   }
-
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';
