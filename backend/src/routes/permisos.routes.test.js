@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const dbQuery = vi.fn();
 const auditMock = vi.fn();
 const requireAuthMock = vi.fn((_req, _res, next) => next());
+const requireAnyRoleMock = vi.fn(() => (_req, _res, next) => next());
 const ensureActorMock = vi.fn((_req, _res, next) => next());
 
 const dbPath = require.resolve('../db.js');
@@ -19,7 +20,7 @@ const actorPath = require.resolve('../middlewares/actor.js');
 
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: { query: dbQuery } };
 require.cache[auditPath] = { id: auditPath, filename: auditPath, loaded: true, exports: { audit: auditMock } };
-require.cache[authPath] = { id: authPath, filename: authPath, loaded: true, exports: { requireAuth: requireAuthMock } };
+require.cache[authPath] = { id: authPath, filename: authPath, loaded: true, exports: { requireAuth: requireAuthMock, requireAnyRole: requireAnyRoleMock } };
 require.cache[actorPath] = { id: actorPath, filename: actorPath, loaded: true, exports: { ensureActor: ensureActorMock } };
 
 async function createApp() {
