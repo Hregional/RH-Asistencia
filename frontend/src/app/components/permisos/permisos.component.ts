@@ -56,11 +56,12 @@ export class PermisosComponent implements OnInit {
 
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
-    empleado: true,
-    jefeDepto: true,
+    empleado:     true,
+    jefeDepto:    true,
+    jefeServicio: true,
     jefePersonal: true,
-    direccion: true,
-    oficioRH: true
+    direccion:    true,
+    oficioRH:     true
   };
 
   // Extensión de días adicionales
@@ -358,15 +359,17 @@ export class PermisosComponent implements OnInit {
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
-        empleado: parsed.empleado ?? true,
-        jefeDepto: parsed.jefeDepto ?? true,
+        empleado:     parsed.empleado     ?? true,
+        jefeDepto:    parsed.jefeDepto    ?? true,
+        jefeServicio: parsed.jefeServicio ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion: parsed.direccion ?? true,
-        oficioRH: parsed.oficioRH ?? true
+        direccion:    parsed.direccion    ?? true,
+        oficioRH:     parsed.oficioRH     ?? true
       };
     } else {
-      this.firmas = { empleado: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
+      this.firmas = { empleado: true, jefeDepto: true, jefeServicio: true, jefePersonal: true, direccion: true, oficioRH: true };
     }
+    this.calcularFirmasFilas();
   }
 
   irASolicitud() {
@@ -581,6 +584,7 @@ export class PermisosComponent implements OnInit {
       motivoExtension: this.solicitudForm.motivo_extension || '',
       diasAdicionales: this.solicitudForm.dias_adicionales || null
     };
+    this.calcularFirmasFilas();
   }
 
   // ─── GUARDAR SOLICITUD ────────────────────────────────────────────
@@ -1022,6 +1026,30 @@ export class PermisosComponent implements OnInit {
   }
 
   // ─── HELPERS 
+
+  // Firmas organizadas en filas para la carta (se recalcula en actualizarCarta)
+  firmasFilas: Array<Array<{ key: string; label: string; sub?: string }>> = [];
+
+  private calcularFirmasFilas(): void {
+    type FirmaKey = keyof typeof this.firmas;
+    const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
+      { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
+      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
+      { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
+      { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
+      { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
+      { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
+    ];
+    const activas = todas.filter(f => this.firmas[f.key as FirmaKey]);
+    const n = activas.length;
+    if (n <= 4) {
+      this.firmasFilas = [activas];
+    } else if (n === 5) {
+      this.firmasFilas = [activas.slice(0, 3), activas.slice(3)];
+    } else {
+      this.firmasFilas = [activas.slice(0, 3), activas.slice(3)]; // 6 → 3+3
+    }
+  }
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';
