@@ -56,12 +56,12 @@ export class PermisosComponent implements OnInit {
 
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
-    empleado:     true,
-    jefeDepto:    true,
+    empleado: true,
     jefeServicio: true,
+    jefeDepto: true,
     jefePersonal: true,
-    direccion:    true,
-    oficioRH:     true
+    direccion: true,
+    oficioRH: true
   };
 
   // Extensión de días adicionales
@@ -359,12 +359,12 @@ export class PermisosComponent implements OnInit {
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
-        empleado:     parsed.empleado     ?? true,
-        jefeDepto:    parsed.jefeDepto    ?? true,
+        empleado: parsed.empleado ?? true,
+        jefeDepto: parsed.jefeDepto ?? true,
         jefeServicio: parsed.jefeServicio ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion:    parsed.direccion    ?? true,
-        oficioRH:     parsed.oficioRH     ?? true
+        direccion: parsed.direccion ?? true,
+        oficioRH: parsed.oficioRH ?? true
       };
     } else {
       this.firmas = { empleado: true, jefeDepto: true, jefeServicio: true, jefePersonal: true, direccion: true, oficioRH: true };
@@ -978,8 +978,8 @@ export class PermisosComponent implements OnInit {
       mes: meses[fechaCarta.getMonth()],
       anio: String(fechaCarta.getFullYear()),
       tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
-      mensaje: permiso.tipo_permiso_id 
-        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '') 
+      mensaje: permiso.tipo_permiso_id
+        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '')
         : (permiso.mensaje_otro || ''),
       fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
@@ -1033,12 +1033,12 @@ export class PermisosComponent implements OnInit {
   private calcularFirmasFilas(): void {
     type FirmaKey = keyof typeof this.firmas;
     const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
-      { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
-      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
+      { key: 'empleado', label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
       { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
+      { key: 'jefeDepto', label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
-      { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
-      { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
+      { key: 'direccion', label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
+      { key: 'oficioRH', label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
     ];
     const activas = todas.filter(f => this.firmas[f.key as FirmaKey]);
     const n = activas.length;
