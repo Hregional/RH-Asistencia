@@ -108,6 +108,7 @@ class PermisosModel {
         p.dias_adicionales,
         p.motivo_extension,
         DATE_FORMAT(p.fecha_fin_extendida, '%Y-%m-%d') AS fecha_fin_extendida,
+        p.incluye_fines_semana,
         uc.username AS creado_por_usuario,
         ua.username AS autorizado_por_usuario
       FROM permisos p
@@ -167,15 +168,17 @@ class PermisosModel {
       firmas_config = null,
       dias_adicionales = null,
       motivo_extension = null,
-      fecha_fin_extendida = null
+      fecha_fin_extendida = null,
+      incluye_fines_semana = 0
     } = data;
 
     const [result] = await db.query(`
       INSERT INTO permisos (
         empleado_id, tipo_permiso_id, tipo_permiso_otro, mensaje_otro,
         fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por,
-        firmas_config, dias_adicionales, motivo_extension, fecha_fin_extendida
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        firmas_config, dias_adicionales, motivo_extension, fecha_fin_extendida,
+        incluye_fines_semana
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       empleado_id,
       tipo_permiso_id || null,
@@ -189,7 +192,8 @@ class PermisosModel {
       firmas_config ? JSON.stringify(firmas_config) : null,
       dias_adicionales || null,
       motivo_extension || null,
-      fecha_fin_extendida || null
+      fecha_fin_extendida || null,
+      incluye_fines_semana ? 1 : 0
     ]);
 
     return { id: result.insertId, ...data };
@@ -208,7 +212,8 @@ class PermisosModel {
       firmas_config = null,
       dias_adicionales = null,
       motivo_extension = null,
-      fecha_fin_extendida = null
+      fecha_fin_extendida = null,
+      incluye_fines_semana = 0
     } = data;
 
     const [result] = await db.query(`
@@ -216,7 +221,8 @@ class PermisosModel {
       SET tipo_permiso_id = ?, tipo_permiso_otro = ?, mensaje_otro = ?,
           fecha_inicio = ?, fecha_fin = ?, dias_solicitados = ?,
           estado = ?, observaciones = ?, firmas_config = ?,
-          dias_adicionales = ?, motivo_extension = ?, fecha_fin_extendida = ?
+          dias_adicionales = ?, motivo_extension = ?, fecha_fin_extendida = ?,
+          incluye_fines_semana = ?
       WHERE id = ?
     `, [
       tipo_permiso_id || null,
@@ -231,6 +237,7 @@ class PermisosModel {
       dias_adicionales || null,
       motivo_extension || null,
       fecha_fin_extendida || null,
+      incluye_fines_semana ? 1 : 0,
       id
     ]);
 

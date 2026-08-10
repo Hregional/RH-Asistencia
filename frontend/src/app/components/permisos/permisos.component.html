@@ -223,6 +223,16 @@
     <!-- Extensión de días adicionales — visible cuando hay empleado Y tipo seleccionado -->
     <ng-container
       *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <!-- Toggle: Fines de semana como hábiles -->
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
+            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <!-- Toggle: Días adicionales -->
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Días adicionales</span>
         <label class="toggle-switch">
@@ -359,6 +369,16 @@
 
     <!-- Extensión de días adicionales (editar) — visible cuando hay tipo seleccionado -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <!-- Toggle: Fines de semana como hábiles -->
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
+            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <!-- Toggle: Días adicionales -->
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Días adicionales</span>
         <label class="toggle-switch">
@@ -580,6 +600,9 @@
     <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
     <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
       Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
+    </p>
+    <p *ngIf="cartaData.incluyeFinesDeSemana" class="carta-feriados">
+      * Los fines de semana se consideraron como días hábiles en este permiso.
     </p>
     <div class="carta-fechas-row">
       <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">

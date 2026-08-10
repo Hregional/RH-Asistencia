@@ -151,3 +151,49 @@ export function finesDeSemanaEnRango(inicio: Date, fin: Date): number {
   }
   return count;
 }
+
+/** Calcula días considerando fines de semana como hábiles (solo omite feriados GT) */
+export function calcularDiasConFDS(inicio: Date, fin: Date): number {
+  let dias = 0;
+  const cur = new Date(inicio);
+  while (cur <= fin) {
+    if (!esFeriado(cur)) dias++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dias;
+}
+
+/**
+ * Suma N días desde fecha_base omitiendo solo feriados GT.
+ * Cuando incluyeFDS=true los fines de semana cuentan como días hábiles.
+ * Cuando incluyeFDS=false usa la lógica estándar (omite FDS y feriados).
+ * Devuelve string 'YYYY-MM-DD' o null si los parámetros son inválidos.
+ */
+export function calcularFechaExtendida(
+  fechaBase: string,
+  dias: number,
+  incluyeFDS: boolean
+): string | null {
+  if (!fechaBase || !dias || dias <= 0 || dias > 30) return null;
+
+  let fecha = parseFechaLocal(fechaBase);
+  let contados = 0;
+  let iteraciones = 0;
+  const MAX_ITER = 500;
+
+  while (contados < dias && iteraciones < MAX_ITER) {
+    iteraciones++;
+    fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
+    const dia = fecha.getDay();
+    // Si NO incluye FDS: saltar sábado (6) y domingo (0)
+    if (!incluyeFDS && (dia === 0 || dia === 6)) continue;
+    // Siempre saltar feriados
+    if (esFeriado(fecha)) continue;
+    contados++;
+  }
+
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
