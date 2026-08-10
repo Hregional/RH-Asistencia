@@ -601,7 +601,7 @@
     <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
       Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
     </p>
-    <p *ngIf="cartaData.incluyeFinesDeSemana" class="carta-feriados">
+    <p *ngIf="cartaData.incluyeFinesDeSemana && cartaData.finesDeSemanaCont > 0" class="carta-feriados">
       * Los fines de semana se consideraron como días hábiles en este permiso.
     </p>
     <div class="carta-fechas-row">
