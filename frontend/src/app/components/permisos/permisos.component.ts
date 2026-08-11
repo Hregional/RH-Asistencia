@@ -1051,6 +1051,16 @@ export class PermisosComponent implements OnInit {
     }
   }
 
+  /** Devuelve el nombre del día de la semana en minúscula a partir de 'dd/mm/yyyy' */
+  diaDeSemana(fechaDDMMYYYY: string): string {
+    if (!fechaDDMMYYYY) return '';
+    const [d, m, y] = fechaDDMMYYYY.split('/');
+    const fecha = new Date(`${y}-${m}-${d}T00:00:00`);
+    if (isNaN(fecha.getTime())) return '';
+    const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    return dias[fecha.getDay()];
+  }
+
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';

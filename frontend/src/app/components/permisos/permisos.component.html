@@ -609,8 +609,8 @@
         Fecha: <span class="fecha-campo">{{ cartaData.fechaInicio }}</span>
       </span>
       <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
-        <span>Del <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
+        <span>Del {{ diaDeSemana(cartaData.fechaInicio) }} <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
+        <span>Al {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
       </ng-container>
     </div>
     <p *ngIf="cartaData.motivoExtension" class="carta-feriados">
