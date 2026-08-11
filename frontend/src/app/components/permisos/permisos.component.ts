@@ -978,8 +978,8 @@ export class PermisosComponent implements OnInit {
       mes: meses[fechaCarta.getMonth()],
       anio: String(fechaCarta.getFullYear()),
       tipoPermiso: permiso.tipo_permiso_id ? (tipo?.nombre || '') : (permiso.tipo_permiso_otro || ''),
-      mensaje: permiso.tipo_permiso_id 
-        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '') 
+      mensaje: permiso.tipo_permiso_id
+        ? (tipo?.mensaje_carta || '') + (permiso.mensaje_otro ? ' ' + permiso.mensaje_otro : '')
         : (permiso.mensaje_otro || ''),
       fechaInicio: fmtFecha(permiso.fecha_inicio?.substring(0, 10) || ''),
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),

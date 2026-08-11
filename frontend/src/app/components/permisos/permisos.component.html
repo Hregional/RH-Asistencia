@@ -205,6 +205,8 @@
           <div class="firmas-checks">
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado"
                 (change)="actualizarCarta()"> Empleado</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
+                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
                 (change)="actualizarCarta()"> Jefe Depto.</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
@@ -353,6 +355,8 @@
         <div class="firmas-checks">
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()">
             Empleado</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
+            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
             Jefe Depto.</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
