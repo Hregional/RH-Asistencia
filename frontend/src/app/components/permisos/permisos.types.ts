@@ -25,6 +25,7 @@ export interface CartaData {
     fechaFinExtendida?: string;
     motivoExtension?: string;
     diasAdicionales?: number | null;
+    incluyeFinesDeSemana?: boolean;
 }
 
 export interface PopupObservaciones {
