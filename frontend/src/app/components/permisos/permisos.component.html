@@ -209,6 +209,8 @@
                 (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
                 (change)="actualizarCarta()"> Jefe Depto.</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
+                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
                 (change)="actualizarCarta()"> Jefe Personal</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion"
@@ -223,6 +225,16 @@
     <!-- Extensión de días adicionales — visible cuando hay empleado Y tipo seleccionado -->
     <ng-container
       *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <!-- Toggle: Fines de semana como hábiles -->
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
+            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <!-- Toggle: Días adicionales -->
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Días adicionales</span>
         <label class="toggle-switch">
@@ -347,6 +359,8 @@
             Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
             Jefe Depto.</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
+            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
               (change)="actualizarCarta()"> Jefe Personal</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()">
@@ -359,6 +373,16 @@
 
     <!-- Extensión de días adicionales (editar) — visible cuando hay tipo seleccionado -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
+      <!-- Toggle: Fines de semana como hábiles -->
+      <div class="extension-toggle-row">
+        <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
+        <label class="toggle-switch">
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
+            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <!-- Toggle: Días adicionales -->
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Días adicionales</span>
         <label class="toggle-switch">
@@ -581,13 +605,16 @@
     <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
       Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
     </p>
+    <p *ngIf="cartaData.incluyeFinesDeSemana && cartaData.finesDeSemanaCont > 0" class="carta-feriados">
+      * Los fines de semana se consideraron como días hábiles en este permiso.
+    </p>
     <div class="carta-fechas-row">
       <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
         Fecha: <span class="fecha-campo">{{ cartaData.fechaInicio }}</span>
       </span>
       <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
-        <span>Del <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
+        <span>Del {{ diaDeSemana(cartaData.fechaInicio) }} <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
+        <span>Al {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
       </ng-container>
     </div>
     <p *ngIf="cartaData.motivoExtension" class="carta-feriados">

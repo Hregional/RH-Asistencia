@@ -8,7 +8,8 @@ import { numeroALetras } from '../../utils/number-to-words';
 import {
   esFeriado,
   parseFechaLocal,
-  calcularDiasHabilesGT, feriadosEnRango, finesDeSemanaEnRango
+  calcularDiasHabilesGT, calcularDiasConFDS, calcularFechaExtendida,
+  feriadosEnRango, finesDeSemanaEnRango
 } from '../../utils/feriados';
 import { PermisoCartaComponent } from './permiso-carta.component';
 import { PermisosFormComponent } from './permisos-form.component';
@@ -56,16 +57,18 @@ export class PermisosComponent implements OnInit {
 
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
-    empleado: true,
+    empleado:     true,
+    jefeDepto:    true,
     jefeServicio: true,
-    jefeDepto: true,
     jefePersonal: true,
-    direccion: true,
-    oficioRH: true
+    direccion:    true,
+    oficioRH:     true
   };
 
   // Extensión de días adicionales
   tieneExtension = false;
+  // Fines de semana como días hábiles
+  incluyeFinesDeSemana = false;
 
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
@@ -149,7 +152,8 @@ export class PermisosComponent implements OnInit {
       estado: 'PENDIENTE',
       dias_adicionales: null,
       motivo_extension: null,
-      fecha_fin_extendida: null
+      fecha_fin_extendida: null,
+      incluye_fines_semana: 0
     };
   }
 
@@ -180,7 +184,8 @@ export class PermisosComponent implements OnInit {
       autorizadoEn: '',
       fechaFinExtendida: '',
       motivoExtension: '',
-      diasAdicionales: null
+      diasAdicionales: null,
+      incluyeFinesDeSemana: false
     };
   }
 
@@ -283,34 +288,15 @@ export class PermisosComponent implements OnInit {
   // CÁLCULO FECHA FIN EXTENDIDA SIN CONSIDERAR FINES DE SEM Y TAMPOCO FERIADOS ESTABLECIDOS
   /** Suma N días hábiles desde una fecha dada (máx 30 días adicionales, límite de 500 iteraciones) */
   calcularFechaFinExtendida(): void {
-    const dias = this.solicitudForm.dias_adicionales;
+    const dias      = this.solicitudForm.dias_adicionales;
     const fechaBase = this.solicitudForm.fecha_fin;
 
-    // Validar: requiere fecha_fin y días entre 1 y 30
-    if (!dias || dias <= 0 || dias > 30 || !fechaBase) {
-      this.solicitudForm.fecha_fin_extendida = null;
-      this.actualizarCarta();
-      return;
-    }
-
-    let fecha = parseFechaLocal(fechaBase);
-    let contados = 0;
-    let iteraciones = 0;
-    const MAX_ITER = 500; // Límite de seguridad para evitar loop infinito
-
-    while (contados < dias && iteraciones < MAX_ITER) {
-      iteraciones++;
-      fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
-      const dia = fecha.getDay();
-      if (dia === 0 || dia === 6) continue; // fin de semana
-      if (esFeriado(fecha)) continue;       // feriado GT
-      contados++;
-    }
-
-    const y = fecha.getFullYear();
-    const m = String(fecha.getMonth() + 1).padStart(2, '0');
-    const d = String(fecha.getDate()).padStart(2, '0');
-    this.solicitudForm.fecha_fin_extendida = `${y}-${m}-${d}`;
+    const resultado = calcularFechaExtendida(
+      fechaBase || '',
+      dias || 0,
+      this.incluyeFinesDeSemana
+    );
+    this.solicitudForm.fecha_fin_extendida = resultado;
     this.actualizarCarta();
   }
 
@@ -359,12 +345,12 @@ export class PermisosComponent implements OnInit {
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
-        empleado: parsed.empleado ?? true,
-        jefeDepto: parsed.jefeDepto ?? true,
+        empleado:     parsed.empleado     ?? true,
+        jefeDepto:    parsed.jefeDepto    ?? true,
         jefeServicio: parsed.jefeServicio ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion: parsed.direccion ?? true,
-        oficioRH: parsed.oficioRH ?? true
+        direccion:    parsed.direccion    ?? true,
+        oficioRH:     parsed.oficioRH     ?? true
       };
     } else {
       this.firmas = { empleado: true, jefeDepto: true, jefeServicio: true, jefePersonal: true, direccion: true, oficioRH: true };
@@ -383,6 +369,7 @@ export class PermisosComponent implements OnInit {
     this.diasExcedidos = false;
     this.resetFirmas();
     this.tieneExtension = false;
+    this.incluyeFinesDeSemana = false;
   }
 
   /** Normaliza fecha ISO con timezone a 'YYYY-MM-DD' para inputs date */
@@ -402,6 +389,8 @@ export class PermisosComponent implements OnInit {
     this.resetFirmas(permiso);
     // Cargar estado de extensión
     this.tieneExtension = !!(permiso.dias_adicionales && permiso.dias_adicionales > 0);
+    // Cargar estado de fines de semana
+    this.incluyeFinesDeSemana = !!permiso.incluye_fines_semana;
 
     // Si tipo_permiso_id es null, es personalizado → mapear a -1
     const tipoId = permiso.tipo_permiso_id ?? (permiso.tipo_permiso_otro ? -1 : undefined);
@@ -439,6 +428,7 @@ export class PermisosComponent implements OnInit {
     this.error = null;
     this.resetFirmas();
     this.tieneExtension = false;
+    this.incluyeFinesDeSemana = false;
     // Resetear formulario completo para que no queden datos sucios
     this.solicitudForm = this.initSolicitudForm();
     this.empleadoSeleccionado = null;
@@ -463,6 +453,7 @@ export class PermisosComponent implements OnInit {
 
     // Resetear extensión porque las fechas cambiaron
     this.tieneExtension = false;
+    this.incluyeFinesDeSemana = false;
     this.solicitudForm.dias_adicionales = null;
     this.solicitudForm.motivo_extension = null;
     this.solicitudForm.fecha_fin_extendida = null;
@@ -477,27 +468,29 @@ export class PermisosComponent implements OnInit {
       this.solicitudForm.fecha_fin = this.solicitudForm.fecha_inicio;
     }
 
-    // Validar que las fechas no sean fin de semana
-    if (this.solicitudForm.fecha_inicio) {
-      const dInicio = new Date(this.solicitudForm.fecha_inicio + 'T00:00:00');
-      if (dInicio.getDay() === 0 || dInicio.getDay() === 6) {
-        this.error = 'La fecha de inicio no puede ser sábado o domingo.';
-        this.solicitudForm.fecha_inicio = '';
-        this.solicitudForm.dias_solicitados = 0;
-        this.actualizarCarta();
-        setTimeout(() => this.error = null, 4000);
-        return;
+    // Validar fines de semana solo si el toggle FDS está desactivado
+    if (!this.incluyeFinesDeSemana) {
+      if (this.solicitudForm.fecha_inicio) {
+        const dInicio = new Date(this.solicitudForm.fecha_inicio + 'T00:00:00');
+        if (dInicio.getDay() === 0 || dInicio.getDay() === 6) {
+          this.error = 'La fecha de inicio no puede ser sábado o domingo.';
+          this.solicitudForm.fecha_inicio = '';
+          this.solicitudForm.dias_solicitados = 0;
+          this.actualizarCarta();
+          setTimeout(() => this.error = null, 4000);
+          return;
+        }
       }
-    }
-    if (this.solicitudForm.fecha_fin && !this.esDiaUnico) {
-      const dFin = new Date(this.solicitudForm.fecha_fin + 'T00:00:00');
-      if (dFin.getDay() === 0 || dFin.getDay() === 6) {
-        this.error = 'La fecha de fin no puede ser sábado o domingo.';
-        this.solicitudForm.fecha_fin = '';
-        this.solicitudForm.dias_solicitados = 0;
-        this.actualizarCarta();
-        setTimeout(() => this.error = null, 4000);
-        return;
+      if (this.solicitudForm.fecha_fin && !this.esDiaUnico) {
+        const dFin = new Date(this.solicitudForm.fecha_fin + 'T00:00:00');
+        if (dFin.getDay() === 0 || dFin.getDay() === 6) {
+          this.error = 'La fecha de fin no puede ser sábado o domingo.';
+          this.solicitudForm.fecha_fin = '';
+          this.solicitudForm.dias_solicitados = 0;
+          this.actualizarCarta();
+          setTimeout(() => this.error = null, 4000);
+          return;
+        }
       }
     }
 
@@ -507,10 +500,14 @@ export class PermisosComponent implements OnInit {
       return;
     }
     const inicio = parseFechaLocal(this.solicitudForm.fecha_inicio);
-    const fin = parseFechaLocal(this.solicitudForm.fecha_fin);
-    this.solicitudForm.dias_solicitados = calcularDiasHabilesGT(inicio, fin);
+    const fin    = parseFechaLocal(this.solicitudForm.fecha_fin);
 
-    // Validar límite del tipo de permiso (solo días hábiles, no fines de semana/feriados)
+    // Usar la función correcta según el toggle
+    this.solicitudForm.dias_solicitados = this.incluyeFinesDeSemana
+      ? calcularDiasConFDS(inicio, fin)
+      : calcularDiasHabilesGT(inicio, fin);
+
+    // Validar límite del tipo de permiso
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     this.diasExcedidos = !!(tipo && this.solicitudForm.dias_solicitados > tipo.dias_permitidos);
 
@@ -582,7 +579,8 @@ export class PermisosComponent implements OnInit {
         ? (() => { const [y, m, d] = (this.solicitudForm.fecha_fin_extendida as string).split('-'); return `${d}/${m}/${y}`; })()
         : '',
       motivoExtension: this.solicitudForm.motivo_extension || '',
-      diasAdicionales: this.solicitudForm.dias_adicionales || null
+      diasAdicionales: this.solicitudForm.dias_adicionales || null,
+      incluyeFinesDeSemana: this.incluyeFinesDeSemana
     };
     this.calcularFirmasFilas();
   }
@@ -660,6 +658,7 @@ export class PermisosComponent implements OnInit {
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
+    data.incluye_fines_semana = this.incluyeFinesDeSemana ? 1 : 0;
 
     this.permisosSvc.createPermiso(data).subscribe({
       next: (res: any) => {
@@ -741,6 +740,7 @@ export class PermisosComponent implements OnInit {
     }
     // Guardar configuración de firmas en BD
     data.firmas_config = { ...this.firmas };
+    data.incluye_fines_semana = this.incluyeFinesDeSemana ? 1 : 0;
 
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
       next: (res: any) => {
@@ -1033,12 +1033,12 @@ export class PermisosComponent implements OnInit {
   private calcularFirmasFilas(): void {
     type FirmaKey = keyof typeof this.firmas;
     const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
-      { key: 'empleado', label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
+      { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
+      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
-      { key: 'jefeDepto', label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
-      { key: 'direccion', label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
-      { key: 'oficioRH', label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
+      { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
+      { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
     ];
     const activas = todas.filter(f => this.firmas[f.key as FirmaKey]);
     const n = activas.length;
@@ -1050,6 +1050,17 @@ export class PermisosComponent implements OnInit {
       this.firmasFilas = [activas.slice(0, 3), activas.slice(3)]; // 6 → 3+3
     }
   }
+
+  /** Devuelve el nombre del día de la semana en minúscula a partir de 'dd/mm/yyyy' */
+  diaDeSemana(fechaDDMMYYYY: string): string {
+    if (!fechaDDMMYYYY) return '';
+    const [d, m, y] = fechaDDMMYYYY.split('/');
+    const fecha = new Date(`${y}-${m}-${d}T00:00:00`);
+    if (isNaN(fecha.getTime())) return '';
+    const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    return dias[fecha.getDay()];
+  }
+
   getEstadoClass(estado: string, permiso?: Permiso): string {
     if (estado === 'AUTORIZADO') {
       if (permiso && this.yaFinalizo(permiso)) return 'estado-finalizado';

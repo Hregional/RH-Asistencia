@@ -36,6 +36,7 @@ export interface Permiso {
   dias_adicionales?: number | null;
   motivo_extension?: string | null;
   fecha_fin_extendida?: string | null;
+  incluye_fines_semana?: 0 | 1 | boolean;
 }
 
 export interface ApiResponse<T> {
