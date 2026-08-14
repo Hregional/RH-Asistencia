@@ -353,7 +353,7 @@ export class PermisosComponent implements OnInit {
         oficioRH:     parsed.oficioRH     ?? true
       };
     } else {
-      this.firmas = { empleado: true, jefeDepto: true, jefeServicio: true, jefePersonal: true, direccion: true, oficioRH: true };
+      this.firmas = { empleado: true, jefeServicio: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
     }
     this.calcularFirmasFilas();
   }
