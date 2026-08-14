@@ -58,8 +58,8 @@ export class PermisosComponent implements OnInit {
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
     empleado:     true,
-    jefeDepto:    true,
     jefeServicio: true,
+    jefeDepto:    true,
     jefePersonal: true,
     direccion:    true,
     oficioRH:     true
@@ -346,8 +346,8 @@ export class PermisosComponent implements OnInit {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
         empleado:     parsed.empleado     ?? true,
-        jefeDepto:    parsed.jefeDepto    ?? true,
         jefeServicio: parsed.jefeServicio ?? true,
+        jefeDepto:    parsed.jefeDepto    ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
         direccion:    parsed.direccion    ?? true,
         oficioRH:     parsed.oficioRH     ?? true
@@ -887,53 +887,84 @@ export class PermisosComponent implements OnInit {
   <style>
     @page {
       size: letter portrait;
-      margin: 10mm 15mm;
-      margin-top: 0mm;
-      margin-bottom: 0mm;
+      margin: 0;
     }
-    @page :first { margin-top: 0; }
-    @page :left { margin-left: 10mm; }
-    @page :right { margin-right: 10mm; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
     head { display: none !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
-    html { background: #fff !important; }
-    .carta-hoja { width: 100%; height: 100vh; display: flex; flex-direction: column; border: none; margin: 0; max-width: 100%; font-size: 10pt; line-height: 1.4; color: #111; overflow: hidden; }
-    .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
-    .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
-    .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
-    .carta-hro-logo-left { display:flex; align-items:flex-start; }
-    .carta-logo-img { height:50px; width:auto; object-fit:contain; }
-    .carta-hro-logo-right { text-align:right; }
-    .carta-hro-inst-right { font-size:7pt; line-height:1.5; text-align:right; color:#111; }
-    .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
-    .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
-    .fecha-mes { min-width:80px; }
-    .carta-hro-destinatario { margin-bottom:6px; font-size:9pt; line-height:1.4; }
-    .carta-hro-body { margin-bottom:4px; flex:1; }
-    .carta-hro-body p { font-size:9pt; margin:0 0 4px; }
+    html, body { margin: 0; padding: 0; width: 216mm; background: #fff !important; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 8.5pt; color: #111; }
+    * { font-family: 'Times New Roman', Times, serif; }
+    /* La hoja ocupa exactamente 279mm = 1 pagina carta */
+    .carta-hoja {
+      width: 190mm;
+      height: 274mm;
+      margin: 0 auto;
+      padding: 5mm 0 3mm;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+    /* Cada copia ocupa la mitad exacta disponible */
+    .carta-copia-bloque {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-left: 4mm;
+      padding-right: 4mm;
+    }
+    .carta-copia-bloque + .carta-copia-bloque {
+      border-top: 1.2px dashed #999;
+      padding-top: 1.5mm;
+      margin-top: 0;
+    }
+    .carta-hro-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #1a3a6b; padding-bottom:2px; margin-bottom:2px; flex-shrink:0; }
+    .carta-logo-img { height:36px; width:auto; object-fit:contain; }
+    .carta-hro-inst-right { font-size:5.5pt; line-height:1.45; text-align:right; color:#1a3a6b; font-weight:500; }
+    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; font-size:5.5pt; color:#666; margin-bottom:1px; flex-shrink:0; }
+    .carta-hro-fecha-line { font-size:7.5pt; margin-bottom:2px; display:flex; gap:3px; align-items:baseline; flex-wrap:wrap; justify-content:center; flex-shrink:0; }
+    .fecha-campo { min-width:40px; display:inline-block; text-align:center; padding:0 2px; font-weight:600; }
+    .fecha-mes { min-width:65px; }
+    .carta-hro-destinatario { margin-bottom:2px; font-size:7.5pt; line-height:1.3; display:flex; flex-direction:row; align-items:baseline; gap:4px; flex-wrap:wrap; flex-shrink:0; }
+    .carta-hro-body { flex:1; min-height:0; }
+    .carta-hro-body p { font-size:7.5pt; margin:0 0 1.5px; line-height:1.28; }
     .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
-    .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
-    .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:12pt; }
-    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
-    .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
-    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
-    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:1px; font-size:7.5pt; }
-    .firma-linea { width:100% !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
-    .firma-label { font-weight:600; font-size:7pt; text-transform:uppercase; display:block !important; }
-    .firma-sub { font-size:6.5pt; color:#333; display:block !important; }
-    .dias-autorizacion { font-size:9pt; }
-    .carta-solicitud-line { margin-bottom:3px !important; }
-    .carta-tipo-permiso { margin-bottom:3px !important; }
-    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
+    .carta-solicitud-line { margin-bottom:1px !important; }
+    .carta-tipo-permiso { margin-bottom:1px !important; }
+    .carta-mensaje { font-size:7pt; text-transform:uppercase; }
+    .carta-feriados { font-size:6.5pt; font-style:italic; text-transform:uppercase; margin:0 0 1px !important; color:#444; }
+    .dias-autorizacion { font-size:8pt; font-weight:700; }
+    .carta-fechas-row { display:block; margin:3px 0; font-size:8pt; color:#111; text-align:center; }
+    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:1px 0; margin:2px 0; font-size:6.5pt; font-weight:700; color:#000; text-transform:uppercase; flex-shrink:0; }
+    .carta-atentamente { font-size:7.5pt; margin:2px 0 0 !important; flex-shrink:0; }
+    .firma-spacer { height:6mm; display:block; flex-shrink:0; }
+    .carta-hro-firmas-wrapper { display:flex; flex-direction:column; gap:2pt; width:100%; flex-shrink:0; }
+    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-around !important; gap:3px; width:100%; }
+    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; }
+    .firma-linea { width:84% !important; border-top:1px solid #000 !important; margin-bottom:1px; display:block !important; }
+    .firma-label { font-weight:700; font-size:5.5pt; text-transform:uppercase; display:block !important; line-height:1.2; }
+    .firma-sub { font-size:5pt; color:#555; display:block !important; }
   </style>
 </head>
 <body>${cartaEl.outerHTML}</body>
 </html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+    // Auto-escalar para que todo quepa en 1 hoja sin importar el contenido
+    setTimeout(() => {
+      const hoja = win.document.querySelector('.carta-hoja');
+      if (hoja) {
+        const alturaContenido = hoja.scrollHeight;
+        const alturaDisponible = win.innerHeight || 1056;
+        if (alturaContenido > alturaDisponible) {
+          const escala = alturaDisponible / alturaContenido;
+          (hoja as HTMLElement).style.transform = 'scale(' + escala + ')';
+          (hoja as HTMLElement).style.transformOrigin = 'top center';
+        }
+      }
+      setTimeout(() => { win.print(); win.close(); }, 300);
+    }, 300);
   }
 
   // ─── IMPRIMIR DESDE TABLA 
@@ -1034,8 +1065,8 @@ export class PermisosComponent implements OnInit {
     type FirmaKey = keyof typeof this.firmas;
     const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
       { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
-      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
+      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
       { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
       { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }

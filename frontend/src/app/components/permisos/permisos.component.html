@@ -205,8 +205,6 @@
           <div class="firmas-checks">
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado"
                 (change)="actualizarCarta()"> Empleado</label>
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
-                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
                 (change)="actualizarCarta()"> Jefe Depto.</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
@@ -355,8 +353,6 @@
         <div class="firmas-checks">
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()">
             Empleado</label>
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
-            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
             Jefe Depto.</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
@@ -541,7 +537,7 @@
     </div>
 
     <!-- ── Separador punteado ── -->
-    <div class="carta-separador">✂</div>
+    <div class="carta-separador"></div>
 
     <!-- ── COPIA 2 ── -->
     <div class="carta-copia-bloque">
@@ -580,13 +576,10 @@
 
   <div class="carta-hro-destinatario">
     <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() === 'vacaciones'">
-      Señor Director:<br>
-      A: Su Despacho
+      <span>Señor Director:</span>&nbsp;<span>A su despacho</span>
     </ng-container>
     <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() !== 'vacaciones'">
-      Señores:
-      <strong>Recursos Humanos</strong><br>
-      A: Su Despacho
+      <span>Señores: <strong>Recursos Humanos</strong></span>&nbsp;<span>A su despacho</span>
     </ng-container>
   </div>
 
@@ -610,11 +603,11 @@
     </p>
     <div class="carta-fechas-row">
       <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
-        Fecha: <span class="fecha-campo">{{ cartaData.fechaInicio }}</span>
+        Período comprendido el día {{ diaDeSemana(cartaData.fechaInicio) }} {{ cartaData.fechaInicio }}
       </span>
       <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
-        <span>Del {{ diaDeSemana(cartaData.fechaInicio) }} <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
+        Período comprendido entre el {{ diaDeSemana(cartaData.fechaInicio) }} {{ cartaData.fechaInicio }}
+        y el {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} {{ cartaData.fechaFinExtendida || cartaData.fechaFin }}
       </ng-container>
     </div>
     <p *ngIf="cartaData.motivoExtension" class="carta-feriados">
@@ -625,6 +618,9 @@
     </p>
     <p class="carta-atentamente">Atentamente,</p>
   </div>
+
+  <!-- Spacer flexible: da espacio cómodo para firmar sin importar resolución/zoom -->
+  <div class="firma-spacer"></div>
 
   <div class="carta-hro-firmas-wrapper">
     <div class="carta-hro-firmas" *ngFor="let fila of firmasFilas">
