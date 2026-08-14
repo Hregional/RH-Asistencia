@@ -58,8 +58,8 @@ export class PermisosComponent implements OnInit {
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
     empleado:     true,
-    jefeServicio: true,
     jefeDepto:    true,
+    jefeServicio: true,
     jefePersonal: true,
     direccion:    true,
     oficioRH:     true
@@ -346,14 +346,14 @@ export class PermisosComponent implements OnInit {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
         empleado:     parsed.empleado     ?? true,
-        jefeServicio: parsed.jefeServicio ?? true,
         jefeDepto:    parsed.jefeDepto    ?? true,
+        jefeServicio: parsed.jefeServicio ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
         direccion:    parsed.direccion    ?? true,
         oficioRH:     parsed.oficioRH     ?? true
       };
     } else {
-      this.firmas = { empleado: true, jefeServicio: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
+      this.firmas = { empleado: true, jefeDepto: true, jefeServicio: true, jefePersonal: true, direccion: true, oficioRH: true };
     }
     this.calcularFirmasFilas();
   }
@@ -1034,8 +1034,8 @@ export class PermisosComponent implements OnInit {
     type FirmaKey = keyof typeof this.firmas;
     const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
       { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
-      { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
       { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
+      { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
       { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
       { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
       { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }

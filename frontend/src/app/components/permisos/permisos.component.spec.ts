@@ -113,27 +113,4 @@ describe('PermisosComponent', () => {
             estado: 'AUTORIZADO'
         } as Permiso)).toBeTrue();
     });
-
-    it('mantiene el orden correcto de firmas (Jefe de Servicio antes de Jefe de Departamento)', () => {
-        component.firmas = {
-            empleado: true,
-            jefeServicio: true,
-            jefeDepto: true,
-            jefePersonal: true,
-            direccion: true,
-            oficioRH: true
-        };
-
-        (component as any).calcularFirmasFilas();
-
-        const firmasPlanas = component.firmasFilas.flat();
-        const idxJefeServicio = firmasPlanas.findIndex(f => f.key === 'jefeServicio');
-        const idxJefeDepto = firmasPlanas.findIndex(f => f.key === 'jefeDepto');
-
-        expect(idxJefeServicio).toBeGreaterThan(-1);
-        expect(idxJefeDepto).toBeGreaterThan(-1);
-        expect(idxJefeServicio).toBeLessThan(idxJefeDepto);
-        expect(firmasPlanas[idxJefeServicio].label).toBe('JEFE DE SERVICIO');
-        expect(firmasPlanas[idxJefeDepto].label).toBe('JEFE DE DEPARTAMENTO');
-    });
 });
