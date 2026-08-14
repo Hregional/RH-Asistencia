@@ -135,5 +135,10 @@ describe('PermisosComponent', () => {
         expect(idxJefeServicio).toBeLessThan(idxJefeDepto);
         expect(firmasPlanas[idxJefeServicio].label).toBe('JEFE DE SERVICIO');
         expect(firmasPlanas[idxJefeDepto].label).toBe('JEFE DE DEPARTAMENTO');
+
+        // Verificar que no existan firmas duplicadas
+        const keys = firmasPlanas.map(f => f.key);
+        const keysUnicas = new Set(keys);
+        expect(keys.length).toBe(keysUnicas.size);
     });
 });
