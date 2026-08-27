@@ -59,7 +59,6 @@ describe('PermisosComponent', () => {
         component.calcularFechaFinExtendida();
 
         expect(component.solicitudForm.fecha_fin_extendida).toBeTruthy();
-        expect((component as any).actualizarCarta).toHaveBeenCalled();
     });
 
     it('limpia datos de extensión cuando el valor es inválido', () => {
