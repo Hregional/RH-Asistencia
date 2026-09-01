@@ -660,8 +660,10 @@
   <!-- Spacer flexible: da espacio cómodo para firmar sin importar resolución/zoom -->
   <div class="firma-spacer"></div>
 
-  <div class="carta-hro-firmas-wrapper">
-    <div class="carta-hro-firmas" *ngFor="let fila of firmasFilas">
+  <div class="carta-hro-firmas-wrapper" [ngClass]="'firmas-n' + totalFirmasActivas">
+    <div class="carta-hro-firmas"
+         *ngFor="let fila of firmasFilas; let i = index"
+         [ngClass]="{'fila-1': i === 0, 'fila-2': i === 1}">
       <div class="firma-bloque" *ngFor="let f of fila">
         <div class="firma-linea"></div>
         <strong *ngIf="f.key === 'empleado'">{{ cartaData.nombreEmpleado | uppercase }}</strong>

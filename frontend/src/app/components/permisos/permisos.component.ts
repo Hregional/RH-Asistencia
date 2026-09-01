@@ -1010,7 +1010,10 @@ export class PermisosComponent implements OnInit {
     .carta-atentamente { font-size:10.5pt; margin:4px 0 10mm !important; flex-shrink:0; }
     .firma-spacer { display:none; }
     .carta-hro-firmas-wrapper { display:flex; flex-direction:column; gap:10mm; width:100%; flex-shrink:0; }
-    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-around !important; gap:4px; width:100%; }
+    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-around !important; gap:16px; width:100%; }
+    .firmas-n2 .carta-hro-firmas { justify-content:space-around !important; }
+    .firmas-n4 .fila-1 { justify-content:center !important; gap:24px !important; }
+    .firmas-n4 .fila-2 { justify-content:space-between !important; }
     .firma-bloque { flex:0 0 45mm !important; max-width:45mm !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; }
     .firma-bloque strong { font-size:7.5pt !important; font-weight:600 !important; text-transform:uppercase !important; display:block !important; line-height:1.2 !important; margin-bottom:1px !important; }
     .firma-linea { width:45mm !important; max-width:45mm !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
@@ -1147,14 +1150,19 @@ export class PermisosComponent implements OnInit {
     if (n <= 1) {
       this.firmasFilas = [activas];
     } else if (n === 2) {
-      this.firmasFilas = [[activas[0]], [activas[1]]];
+      // 2 firmas: 1 fila, separadas a los lados
+      this.firmasFilas = [activas];
     } else if (n === 3) {
-      this.firmasFilas = [activas.slice(0, 2), activas.slice(2)];
+      // 3 firmas: 1 arriba centrada + 2 abajo
+      this.firmasFilas = [[activas[0]], activas.slice(1)];
     } else if (n === 4) {
+      // 4 firmas: 2 + 2 bien distribuidas
       this.firmasFilas = [activas.slice(0, 2), activas.slice(2)];
     } else if (n === 5) {
+      // 5 firmas: 3 + 2
       this.firmasFilas = [activas.slice(0, 3), activas.slice(3)];
     } else {
+      // 6 firmas: 3 + 3
       this.firmasFilas = [activas.slice(0, 3), activas.slice(3)];
     }
   }
@@ -1167,6 +1175,10 @@ export class PermisosComponent implements OnInit {
     if (isNaN(fecha.getTime())) return '';
     const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     return dias[fecha.getDay()];
+  }
+
+  get totalFirmasActivas(): number {
+    return this.firmasFilas.reduce((a, f) => a + f.length, 0);
   }
 
   getEstadoClass(estado: string, permiso?: Permiso): string {

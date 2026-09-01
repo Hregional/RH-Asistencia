@@ -808,9 +808,11 @@
     .carta-hro-firmas {
       display: flex;
       justify-content: space-around;
-      gap: 4px;
+      gap: 16px;
       margin-top: 28px;
     }
+
+    /* 4 firmas: fila 1 centradas juntas, fila 2 separadas a las orillas */
 
     .firma-bloque {
       flex: 0 0 45mm;
@@ -1661,3 +1663,12 @@
     }
   }
 }
+
+/* ─── LAYOUT ESPECÍFICO POR CANTIDAD DE FIRMAS ─── */
+/* 4 firmas: fila 1 centradas juntas, fila 2 separadas a las orillas */
+.firmas-n4 .fila-1 { justify-content: center !important; gap: 32px !important; }
+.firmas-n4 .fila-2 { justify-content: space-between !important; }
+
+/* 2 firmas: una fila, separadas pero no en los extremos */
+.firmas-n2 .carta-hro-firmas { justify-content: space-around !important; }
+
