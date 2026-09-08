@@ -12,6 +12,8 @@
 const FERIADOS_FIJOS: Record<string, string> = {
   '01-01': 'Año Nuevo',
   '05-01': 'Día del Trabajo',
+  '05-10': 'Día de la Madre',
+  '06-17': 'Día del Padre',
   '06-30': 'Día del Ejército',
   '09-15': 'Independencia de Guatemala',
   '10-07': 'Fiesta Patronal Virgen del Rosario',
@@ -21,15 +23,8 @@ const FERIADOS_FIJOS: Record<string, string> = {
   '12-31': 'Fin de Año',
 };
 
-// Feriados que varían por año (agregar según sea necesario)
-// Formato: 'YYYY-MM-DD': 'Nombre'
-// Día de la Madre (10 mayo) y Día del Padre (17 junio): se agregan
-// aquí cada año según autorización del hospital.
-// Primer viernes de septiembre (Día del Salubrista): se calcula en
-// getSalubrista() y se agrega automáticamente.
+// Feriados que varían por año — solo para casos especiales no recurrentes
 const FERIADOS_VARIABLES: Record<string, string> = {
-  '2026-05-10': 'Día de la Madre',
-  '2026-06-17': 'Día del Padre',
 };
 
 /**

@@ -421,6 +421,13 @@
     min-width: 28px;
     white-space: nowrap;
   }
+
+  /* Botón opacado — acción ya aplicada */
+  .btn-opaco {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(30%);
+  }
 }
 
 /* Paginación */
@@ -1468,6 +1475,19 @@
     gap: 8px;
     align-items: center;
 
+    .cal-anios-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+
+      .cal-anios-nav {
+        padding: 4px 7px;
+        font-size: 14px;
+        min-width: 24px;
+        line-height: 1;
+      }
+    }
+
     .cal-select-mes,
     .cal-select-anio {
       padding: 6px 10px;
@@ -1525,6 +1545,8 @@
   position: relative;
   cursor: pointer;
   transition: all 0.15s ease;
+  overflow: hidden;   /* evita que el texto de feriados expanda la celda */
+  min-width: 0;       /* necesario para que grid 1fr funcione correctamente */
 
   &:hover:not(.cal-empty):not(.cal-disabled) {
     background: #e8f0fe;
@@ -1601,12 +1623,14 @@
     color: #d32f2f;
     font-weight: 600;
     text-align: center;
-    line-height: 1;
+    line-height: 1.1;
     margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    /* Forzar que el texto no expanda la celda del grid */
+    width: 0;
+    min-width: 100%;
     pointer-events: none;
   }
 }

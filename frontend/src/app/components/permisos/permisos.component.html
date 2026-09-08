@@ -71,11 +71,17 @@
             <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
           </td>
           <td class="action-buttons">
-            <!-- Autorizar: cuando no está AUTORIZADO -->
-            <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-success btn-small" title="Autorizar"
+            <!-- Autorizar: siempre visible, opacado si ya está AUTORIZADO -->
+            <button class="btn btn-success btn-small"
+              title="Autorizar"
+              [class.btn-opaco]="permiso.estado === 'AUTORIZADO'"
+              [disabled]="permiso.estado === 'AUTORIZADO'"
               (click)="cambiarEstado(permiso, 'AUTORIZADO')">✔</button>
-            <!-- Rechazar: solo cuando está AUTORIZADO -->
-            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-danger btn-small" title="Rechazar"
+            <!-- Rechazar: siempre visible, opacado si ya está RECHAZADO -->
+            <button class="btn btn-danger btn-small"
+              title="Rechazar"
+              [class.btn-opaco]="permiso.estado === 'RECHAZADO'"
+              [disabled]="permiso.estado === 'RECHAZADO'"
               (click)="cambiarEstado(permiso, 'RECHAZADO')">✖</button>
             <!-- Editar: siempre -->
             <button class="btn btn-primary btn-small" title="Editar" (click)="irAEditarPermiso(permiso)">✏️</button>
@@ -639,14 +645,8 @@
       * Los fines de semana se consideraron como días hábiles en este permiso.
     </p>
     <div class="carta-fechas-row">
-      <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin && !cartaData.fechaFinExtendida">
-        Período comprendido el día {{ diaDeSemana(cartaData.fechaInicio) }} {{ cartaData.fechaInicio }}
-      </span>
-      <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin || cartaData.fechaFinExtendida">
-        Período comprendido entre el {{ diaDeSemana(cartaData.fechaInicio) }} {{ cartaData.fechaInicio }}
-        y el {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} {{ cartaData.fechaFinExtendida ||
-        cartaData.fechaFin }}
-      </ng-container>
+      Del {{ cartaData.fechaInicio }}
+      al {{ cartaData.fechaFinExtendida || cartaData.fechaFin }}
     </div>
     <p *ngIf="cartaData.motivoExtension" class="carta-feriados">
       Extensión ({{ cartaData.diasAdicionales }}) días, {{ cartaData.motivoExtension }}

@@ -83,7 +83,11 @@ export class PermisosComponent implements OnInit {
   calMonth = new Date().getMonth();
   calModoSeleccion: 'inicio' | 'fin' = 'inicio';
   nombresMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  anosDisponibles = Array.from({ length: 11 }, (_, i) => new Date().getFullYear() + i);
+  // Siempre muestra año anterior, actual y siguiente — se actualiza automáticamente
+  get anosDisponibles(): number[] {
+    const hoy = new Date().getFullYear();
+    return [hoy - 1, hoy, hoy + 1];
+  }
 
   // Cache de celdas del calendario para evitar recalcular en cada ciclo de detección de cambios
   calCeldasCache: Array<{
