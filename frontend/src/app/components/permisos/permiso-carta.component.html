@@ -50,9 +50,6 @@
                             }}</strong></span>
                 </p>
                 <p class="carta-mensaje">{{ carta.mensaje }}</p>
-                <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
-                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
-                </p>
                 <div class="carta-fechas-row">
                     <span *ngIf="carta.fechaInicio === carta.fechaFin">
                         Fecha: <span class="fecha-campo">{{ carta.fechaInicio }}</span>
@@ -155,9 +152,6 @@
                             }}</strong></span>
                 </p>
                 <p class="carta-mensaje">{{ carta.mensaje }}</p>
-                <p *ngIf="carta.feriadosIncluidos.length > 0" class="carta-feriados">
-                    No incluye feriados: {{ carta.feriadosIncluidos.join(', ') }}
-                </p>
                 <div class="carta-fechas-row">
                     <span *ngIf="carta.fechaInicio === carta.fechaFin">
                         Fecha: <span class="fecha-campo">{{ carta.fechaInicio }}</span>

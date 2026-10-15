@@ -6,11 +6,9 @@ import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.s
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
 import { numeroALetras } from '../../utils/number-to-words';
 import {
-  esFeriado,
   parseFechaLocal,
-  calcularDiasHabilesGT, calcularDiasConFDS, calcularFechaExtendida,
-  feriadosEnRango, finesDeSemanaEnRango,
-  rangoIncluyeMadreOPadre, getNombreFeriado, getFeriadosDelMes, esFeriadoMadreOPadre, OpcionesFeriados
+  calcularDiasPermiso, calcularFechaExtendida,
+  finesDeSemanaEnRango, getFeriadosDelMes
 } from '../../utils/feriados';
 import { PermisoCartaComponent } from './permiso-carta.component';
 import { PermisosFormComponent } from './permisos-form.component';
@@ -70,12 +68,6 @@ export class PermisosComponent implements OnInit {
   tieneExtension = false;
   // Fines de semana como días hábiles
   incluyeFinesDeSemana = false;
-
-  // Feriados condicionales (Día de la Madre / Padre)
-  aplicaDiaMadre = true;
-  aplicaDiaPadre = true;
-  mostrarPreguntaMadre = false;
-  mostrarPreguntaPadre = false;
 
   // Modal Calendario con puntos de color
   mostrarCalendarioModal = false;
@@ -145,6 +137,13 @@ export class PermisosComponent implements OnInit {
 
   // Fecha mínima = hoy
   readonly hoy = new Date().toISOString().substring(0, 10);
+
+  // Límites de texto. La descripción se imprime en la carta (media hoja carta),
+  // por eso es acotada; las observaciones son de uso interno y no se imprimen.
+  readonly MAX_DESCRIPCION = 400;
+  readonly MAX_MOTIVO_EXTENSION = 95;
+  readonly MAX_OBSERVACIONES = 1000;
+
 
   /** True cuando el tipo seleccionado tiene límite de 1 día */
   get esDiaUnico(): boolean {
@@ -220,7 +219,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: '',
       diasSolicitados: 0,
       diasEnLetras: '',
-      feriadosIncluidos: [] as string[],
       finesDeSemanaCont: 0,
       creadoPor: '',
       autorizadoPor: '',
@@ -329,22 +327,16 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // CÁLCULO FECHA FIN EXTENDIDA SIN CONSIDERAR FINES DE SEM Y TAMPOCO FERIADOS ESTABLECIDOS
+  // CÁLCULO FECHA FIN EXTENDIDA — no descuenta feriados (se ajustan manualmente)
   /** Suma N días hábiles desde una fecha dada (máx 30 días adicionales, límite de 500 iteraciones) */
   calcularFechaFinExtendida(): void {
     const dias = this.solicitudForm.dias_adicionales;
     const fechaBase = this.solicitudForm.fecha_fin;
 
-    const opciones: OpcionesFeriados = {
-      aplicaMadre: this.aplicaDiaMadre,
-      aplicaPadre: this.aplicaDiaPadre
-    };
-
     const resultado = calcularFechaExtendida(
       fechaBase || '',
       dias || 0,
-      this.incluyeFinesDeSemana,
-      opciones
+      this.incluyeFinesDeSemana
     );
     this.solicitudForm.fecha_fin_extendida = resultado;
   }
@@ -398,12 +390,8 @@ export class PermisosComponent implements OnInit {
         direccion: parsed.direccion ?? true,
         oficioRH: parsed.oficioRH ?? true
       };
-      if (parsed.aplicaDiaMadre !== undefined) this.aplicaDiaMadre = parsed.aplicaDiaMadre;
-      if (parsed.aplicaDiaPadre !== undefined) this.aplicaDiaPadre = parsed.aplicaDiaPadre;
     } else {
       this.firmas = { empleado: true, jefeServicio: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
-      this.aplicaDiaMadre = true;
-      this.aplicaDiaPadre = true;
     }
     this.calcularFirmasFilas();
   }
@@ -507,7 +495,7 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // ─── CÁLCULO DE DÍAS HÁBILES (calendario GT)
+  // ─── CÁLCULO DE DÍAS (no descuenta feriados; solo fines de semana según toggle)
   calcularDias() {
     // Si es permiso de 1 día, forzar fecha_fin = fecha_inicio antes de validar
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
@@ -516,8 +504,6 @@ export class PermisosComponent implements OnInit {
 
     if (!this.solicitudForm.fecha_inicio || !this.solicitudForm.fecha_fin) {
       this.solicitudForm.dias_solicitados = 0;
-      this.mostrarPreguntaMadre = false;
-      this.mostrarPreguntaPadre = false;
       this.actualizarCarta();
       return;
     }
@@ -529,19 +515,6 @@ export class PermisosComponent implements OnInit {
     if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.fecha_fin) {
       this.calcularFechaFinExtendida();
     }
-
-    const fechaFinEfectivaStr = this.solicitudForm.fecha_fin_extendida || this.solicitudForm.fecha_fin;
-    const finExtendido = parseFechaLocal(fechaFinEfectivaStr);
-
-    // Detectar si el rango abarca 10 de mayo o 17 de junio (hasta la extensión)
-    const { incluyeMadre, incluyePadre } = rangoIncluyeMadreOPadre(inicio, finExtendido);
-    this.mostrarPreguntaMadre = incluyeMadre;
-    this.mostrarPreguntaPadre = incluyePadre;
-
-    const opciones: OpcionesFeriados = {
-      aplicaMadre: this.aplicaDiaMadre,
-      aplicaPadre: this.aplicaDiaPadre
-    };
 
     // Validar fines de semana solo si el toggle FDS está desactivado
     if (!this.incluyeFinesDeSemana) {
@@ -569,10 +542,8 @@ export class PermisosComponent implements OnInit {
       }
     }
 
-    // Usar la función correcta según el toggle para los días base
-    this.solicitudForm.dias_solicitados = this.incluyeFinesDeSemana
-      ? calcularDiasConFDS(inicio, finOriginal, opciones)
-      : calcularDiasHabilesGT(inicio, finOriginal, opciones);
+    // Días base: sin descontar feriados; los FDS cuentan solo si el toggle está activo
+    this.solicitudForm.dias_solicitados = calcularDiasPermiso(inicio, finOriginal, this.incluyeFinesDeSemana);
 
     // Validar límite del tipo de permiso
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
@@ -603,17 +574,7 @@ export class PermisosComponent implements OnInit {
     const areaNombre = emp ? (this.areas.find(a => a.id === emp.area_id)?.nombre || '') : '';
     const dias = this.solicitudForm.dias_solicitados || 0;
 
-    const opciones = {
-      aplicaMadre: this.aplicaDiaMadre,
-      aplicaPadre: this.aplicaDiaPadre,
-      incluyeFDS: this.incluyeFinesDeSemana
-    };
-
     const fechaFinEfectiva = this.solicitudForm.fecha_fin_extendida || this.solicitudForm.fecha_fin;
-
-    const feriados = (this.solicitudForm.fecha_inicio && fechaFinEfectiva)
-      ? feriadosEnRango(parseFechaLocal(this.solicitudForm.fecha_inicio), parseFechaLocal(fechaFinEfectiva), opciones)
-      : [];
 
     const finesSemana = (this.solicitudForm.fecha_inicio && fechaFinEfectiva)
       ? finesDeSemanaEnRango(parseFechaLocal(this.solicitudForm.fecha_inicio), parseFechaLocal(fechaFinEfectiva))
@@ -637,7 +598,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: fmtFecha(this.solicitudForm.fecha_fin || ''),
       diasSolicitados: dias,
       diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
-      feriadosIncluidos: feriados,
       finesDeSemanaCont: finesSemana,
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
@@ -730,12 +690,8 @@ export class PermisosComponent implements OnInit {
     } else {
       data.tipo_permiso_otro = null;
     }
-    // Guardar configuración de firmas y feriados condicionales en BD
-    data.firmas_config = {
-      ...this.firmas,
-      aplicaDiaMadre: this.aplicaDiaMadre,
-      aplicaDiaPadre: this.aplicaDiaPadre
-    };
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
     data.incluye_fines_semana = this.incluyeFinesDeSemana ? 1 : 0;
 
     this.permisosSvc.createPermiso(data).subscribe({
@@ -816,12 +772,8 @@ export class PermisosComponent implements OnInit {
     } else {
       data.tipo_permiso_otro = null;
     }
-    // Guardar configuración de firmas y feriados condicionales en BD
-    data.firmas_config = {
-      ...this.firmas,
-      aplicaDiaMadre: this.aplicaDiaMadre,
-      aplicaDiaPadre: this.aplicaDiaPadre
-    };
+    // Guardar configuración de firmas en BD
+    data.firmas_config = { ...this.firmas };
     data.incluye_fines_semana = this.incluyeFinesDeSemana ? 1 : 0;
 
     this.permisosSvc.updatePermiso(this.editingPermiso!.id!, data).subscribe({
@@ -1035,7 +987,29 @@ export class PermisosComponent implements OnInit {
 </html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+    setTimeout(() => {
+      this.ajustarCartaAPagina(win.document);
+      win.print();
+      win.close();
+    }, 500);
+  }
+
+  /**
+   * Cada copia ocupa media hoja con overflow oculto. Si el contenido (descripción larga,
+   * extensión, nota de FDS, 6 firmas) no cabe, reduce proporcionalmente solo el cuerpo
+   * del texto para que las firmas nunca queden cortadas. Mínimo 70%.
+   */
+  ajustarCartaAPagina(doc: Document): void {
+    doc.querySelectorAll<HTMLElement>('.carta-copia-bloque').forEach(bloque => {
+      const cuerpo = bloque.querySelector<HTMLElement>('.carta-hro-body');
+      if (!cuerpo) return;
+      let zoom = 1;
+      cuerpo.style.removeProperty('zoom');
+      while (bloque.scrollHeight > bloque.clientHeight + 1 && zoom > 0.7) {
+        zoom = Math.round((zoom - 0.02) * 100) / 100;
+        cuerpo.style.setProperty('zoom', String(zoom));
+      }
+    });
   }
 
   // ─── IMPRIMIR DESDE TABLA 
@@ -1043,10 +1017,6 @@ export class PermisosComponent implements OnInit {
     if (!this.editingPermiso || this.editingPermiso.id !== permiso.id) {
       this.resetFirmas(permiso);
     }
-    const opciones: OpcionesFeriados = {
-      aplicaMadre: this.aplicaDiaMadre,
-      aplicaPadre: this.aplicaDiaPadre
-    };
     const emp = this.empleados.find(e => e.id === permiso.empleado_id);
     const rolNombre = emp ? (this.roles.find(r => r.id === emp.rol_id)?.nombre || '') : '';
     const areaNombre = emp ? (this.areas.find(a => a.id === emp.area_id)?.nombre || '') : '';
@@ -1055,7 +1025,6 @@ export class PermisosComponent implements OnInit {
     const fmtFecha = (iso: string) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
     const inicio = permiso.fecha_inicio ? parseFechaLocal(permiso.fecha_inicio.substring(0, 10)) : null;
     const fin = permiso.fecha_fin ? parseFechaLocal(permiso.fecha_fin.substring(0, 10)) : null;
-    const feriados = inicio && fin ? feriadosEnRango(inicio, fin, opciones) : [];
     const finesSemana = inicio && fin ? finesDeSemanaEnRango(inicio, fin) : 0;
     const dias = permiso.dias_solicitados || 0;
 
@@ -1094,7 +1063,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
       diasSolicitados: dias,
       diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
-      feriadosIncluidos: feriados,
       finesDeSemanaCont: finesSemana,
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
@@ -1309,10 +1277,8 @@ export class PermisosComponent implements OnInit {
   private getMatrizDiasCalendario() {
     const primerDia = new Date(this.calYear, this.calMonth, 1).getDay(); // 0=Dom
     const totalDias = new Date(this.calYear, this.calMonth + 1, 0).getDate();
-    const feriados = getFeriadosDelMes(this.calYear, this.calMonth, {
-      aplicaMadre: this.aplicaDiaMadre,
-      aplicaPadre: this.aplicaDiaPadre
-    });
+    // Feriados solo como referencia visual; no afectan el conteo de días
+    const feriados = getFeriadosDelMes(this.calYear, this.calMonth);
 
     const hoy = new Date();
     const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;

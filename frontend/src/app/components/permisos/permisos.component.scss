@@ -252,6 +252,19 @@
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 12px;
+
+  // Evita que "Fecha fin extendida" parta en dos líneas y desalinee los inputs
+  .form-group-small {
+    flex: 0 0 150px;
+
+    label {
+      white-space: nowrap;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 0;
+  }
 }
 
 .req {
@@ -525,6 +538,12 @@
   .form-group-small {
     flex: 0 0 110px;
   }
+}
+
+.form-row-estado {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
 }
 
 .form-actions {
@@ -1197,6 +1216,10 @@
       font-size: 13px;
       color: #333;
       line-height: 1.5;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
 
     .obs-popup-estado {
@@ -1343,7 +1366,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
   width: 100%;
+  min-height: 40px;
   padding: 9px 12px;
   background: #ffffff;
   border: 1px solid #ced4da;
@@ -1374,29 +1399,18 @@
   }
 }
 
-.feriado-condicional-alert {
-  background: #fff8e6;
-  border: 1px solid #ffe082;
-  border-left: 4px solid #ffb300;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin: 10px 0 14px;
+.char-contador {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 3px;
+}
 
-  .toggle-feriado-condicional {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #444;
-    cursor: pointer;
-    user-select: none;
-
-    input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: #ff8f00;
-    }
-  }
+.label-hint {
+  font-weight: 400;
+  color: #6c757d;
+  font-size: 12px;
 }
 
 /* ─── MODAL CALENDARIO CON PUNTOS DE COLOR ─── */

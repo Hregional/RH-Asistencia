@@ -5,6 +5,10 @@
  * Feriados fijos: editar el objeto FERIADOS_FIJOS con formato 'MM-DD'
  * Feriados variables por año: editar FERIADOS_VARIABLES con formato 'YYYY-MM-DD'
  * Semana Santa: se calcula automáticamente (Jueves, Viernes y Sábado Santo)
+ *
+ * IMPORTANTE: los feriados solo se usan como referencia visual en el calendario.
+ * El conteo de días de permisos y la fecha extendida NO descuentan feriados;
+ * si un feriado no debe contarse, el usuario ajusta las fechas manualmente.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -97,22 +101,6 @@ export function esFeriadoMadreOPadre(fecha: Date): 'MADRE' | 'PADRE' | null {
 }
 
 /**
- * Verifica si un rango de fechas incluye 10 de Mayo o 17 de Junio
- */
-export function rangoIncluyeMadreOPadre(inicio: Date, fin: Date): { incluyeMadre: boolean; incluyePadre: boolean } {
-  let incluyeMadre = false;
-  let incluyePadre = false;
-  const cur = new Date(inicio);
-  while (cur <= fin) {
-    const tipo = esFeriadoMadreOPadre(cur);
-    if (tipo === 'MADRE') incluyeMadre = true;
-    if (tipo === 'PADRE') incluyePadre = true;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return { incluyeMadre, incluyePadre };
-}
-
-/**
  * Verifica si una fecha es feriado en Guatemala
  */
 export function esFeriado(fecha: Date, opciones?: OpcionesFeriados): boolean {
@@ -183,47 +171,25 @@ export function getFeriadosDelMes(year: number, month: number, opciones?: Opcion
   return result;
 }
 
-/**
- * Verifica si una fecha es día hábil (lunes-viernes y no feriado)
- */
-export function esDiaHabil(fecha: Date, opciones?: OpcionesFeriados): boolean {
-  const diaSemana = fecha.getDay();
-  if (diaSemana === 0 || diaSemana === 6) return false;
-  return !esFeriado(fecha, opciones);
-}
-
 /** Parsea 'YYYY-MM-DD' sin conversión de zona horaria */
 export function parseFechaLocal(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
-/** Calcula días hábiles GT entre dos fechas (inclusive) */
-export function calcularDiasHabilesGT(inicio: Date, fin: Date, opciones?: OpcionesFeriados): number {
+/**
+ * Cuenta los días del permiso entre dos fechas (inclusive).
+ * NO descuenta feriados: solo omite sábados y domingos cuando incluyeFDS=false.
+ */
+export function calcularDiasPermiso(inicio: Date, fin: Date, incluyeFDS: boolean): number {
   let dias = 0;
   const cur = new Date(inicio);
   while (cur <= fin) {
-    if (esDiaHabil(cur, opciones)) dias++;
+    const d = cur.getDay();
+    if (incluyeFDS || (d !== 0 && d !== 6)) dias++;
     cur.setDate(cur.getDate() + 1);
   }
   return dias;
-}
-
-/** Devuelve lista de feriados que caen en el rango (incluye FDS si incluyeFDS=true) */
-export function feriadosEnRango(inicio: Date, fin: Date, opciones?: OpcionesFeriados & { incluyeFDS?: boolean }): string[] {
-  const lista: string[] = [];
-  const cur = new Date(inicio);
-  while (cur <= fin) {
-    const d = cur.getDay();
-    const esFinSemana = d === 0 || d === 6;
-    if ((!esFinSemana || opciones?.incluyeFDS) && esFeriado(cur, opciones)) {
-      const dd = String(cur.getDate()).padStart(2, '0');
-      const mm = String(cur.getMonth() + 1).padStart(2, '0');
-      lista.push(`${dd}/${mm} ${getNombreFeriado(cur, opciones)}`);
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  return lista;
 }
 
 /** Cuenta fines de semana en el rango */
@@ -238,25 +204,14 @@ export function finesDeSemanaEnRango(inicio: Date, fin: Date): number {
   return count;
 }
 
-/** Calcula días considerando fines de semana como hábiles (solo omite feriados GT) */
-export function calcularDiasConFDS(inicio: Date, fin: Date, opciones?: OpcionesFeriados): number {
-  let dias = 0;
-  const cur = new Date(inicio);
-  while (cur <= fin) {
-    if (!esFeriado(cur, opciones)) dias++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return dias;
-}
-
 /**
- * Suma N días desde fecha_base omitiendo solo feriados GT.
+ * Suma N días desde fecha_base. NO omite feriados: solo omite
+ * sábados y domingos cuando incluyeFDS=false.
  */
 export function calcularFechaExtendida(
   fechaBase: string,
   dias: number,
-  incluyeFDS: boolean,
-  opciones?: OpcionesFeriados
+  incluyeFDS: boolean
 ): string | null {
   if (!fechaBase || !dias || dias <= 0 || dias > 30) return null;
 
@@ -270,7 +225,6 @@ export function calcularFechaExtendida(
     fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
     const dia = fecha.getDay();
     if (!incluyeFDS && (dia === 0 || dia === 6)) continue;
-    if (esFeriado(fecha, opciones)) continue;
     contados++;
   }
 

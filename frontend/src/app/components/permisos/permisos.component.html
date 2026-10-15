@@ -156,9 +156,10 @@
             required />
         </div>
         <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="75"
+          <label>Motivo del Permiso <span class="req">*</span></label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" [maxlength]="MAX_DESCRIPCION"
             required></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -168,10 +169,12 @@
       *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1 && empleadoSeleccionado">
       <div class="form-row">
         <div class="form-group">
-          <label>Descripción adicional (Obligatorio)</label>
+          <label>Descripción adicional <span *ngIf="esVacaciones" class="req">*</span><span *ngIf="!esVacaciones"
+              class="label-hint">(opcional)</span></label>
           <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
-            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" maxlength="130"
-            style="min-height:38px;"></textarea>
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" [maxlength]="MAX_DESCRIPCION"
+            style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -229,18 +232,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Alerta / Pregunta Dinámica para Día de la Madre o del Padre -->
-      <div *ngIf="mostrarPreguntaMadre || mostrarPreguntaPadre" class="feriado-condicional-alert">
-        <label *ngIf="mostrarPreguntaMadre" class="toggle-feriado-condicional">
-          <input type="checkbox" [(ngModel)]="aplicaDiaMadre" (ngModelChange)="calcularDias()">
-          <strong>Asueto Día de la Madre (10 de mayo):</strong> ¿Otorgar como feriado de descanso?
-        </label>
-        <label *ngIf="mostrarPreguntaPadre" class="toggle-feriado-condicional">
-          <input type="checkbox" [(ngModel)]="aplicaDiaPadre" (ngModelChange)="calcularDias()">
-          <strong>Asueto Día del Padre (17 de junio):</strong> ¿Otorgar como feriado de descanso?
-        </label>
-      </div>
     </ng-container>
 
     <!-- Extensión de días adicionales — visible cuando hay empleado Y tipo seleccionado -->
@@ -278,11 +269,20 @@
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
             <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
-              placeholder="Motivo obligatorio" maxlength="95" style="min-height:38px;" required></textarea>
+              placeholder="Motivo obligatorio" [maxlength]="MAX_MOTIVO_EXTENSION" style="min-height:38px;" required></textarea>
+            <small class="char-contador">{{ (solicitudForm.motivo_extension || '').length }}/{{ MAX_MOTIVO_EXTENSION }}</small>
           </div>
         </div>
       </ng-container>
     </ng-container>
+
+    <!-- Observaciones internas (no se imprimen) -->
+    <div class="form-group" *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined">
+      <label>Observaciones <span class="label-hint">(uso interno, no se imprime)</span></label>
+      <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+        [maxlength]="MAX_OBSERVACIONES" style="min-height:76px;"></textarea>
+      <small class="char-contador">{{ (solicitudForm.observaciones || '').length }}/{{ MAX_OBSERVACIONES }}</small>
+    </div>
 
     <!-- Carta preview -->
     <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined">
@@ -330,9 +330,10 @@
             required>
         </div>
         <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="75" required
-            style="min-height:38px;"></textarea>
+          <label>Motivo del Permiso <span class="req">*</span></label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" [maxlength]="MAX_DESCRIPCION"
+            required style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -341,10 +342,12 @@
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1">
       <div class="form-row">
         <div class="form-group">
-          <label>Descripción adicional {{ esVacaciones ? '*' : '(Opcional)' }}</label>
+          <label>Descripción adicional <span *ngIf="esVacaciones" class="req">*</span><span *ngIf="!esVacaciones"
+              class="label-hint">(opcional)</span></label>
           <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
-            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" maxlength="120"
-            style="min-height:38px;"></textarea>
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" [maxlength]="MAX_DESCRIPCION"
+            style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -401,18 +404,6 @@
       </div>
     </div>
 
-    <!-- Alerta / Pregunta Dinámica para Día de la Madre o del Padre (editar) -->
-    <div *ngIf="mostrarPreguntaMadre || mostrarPreguntaPadre" class="feriado-condicional-alert">
-      <label *ngIf="mostrarPreguntaMadre" class="toggle-feriado-condicional">
-        <input type="checkbox" [(ngModel)]="aplicaDiaMadre" (ngModelChange)="calcularDias()">
-        <strong>Asueto Día de la Madre (10 de mayo):</strong> ¿Otorgar como feriado de descanso?
-      </label>
-      <label *ngIf="mostrarPreguntaPadre" class="toggle-feriado-condicional">
-        <input type="checkbox" [(ngModel)]="aplicaDiaPadre" (ngModelChange)="calcularDias()">
-        <strong>Asueto Día del Padre (17 de junio):</strong> ¿Otorgar como feriado de descanso?
-      </label>
-    </div>
-
     <!-- Extensión de días adicionales (editar) — visible cuando hay tipo seleccionado -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== null">
       <!-- Toggle: Fines de semana como hábiles -->
@@ -447,13 +438,14 @@
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
             <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
-              placeholder="Motivo obligatorio" maxlength="95" style="min-height:38px;" required></textarea>
+              placeholder="Motivo obligatorio" [maxlength]="MAX_MOTIVO_EXTENSION" style="min-height:38px;" required></textarea>
+            <small class="char-contador">{{ (solicitudForm.motivo_extension || '').length }}/{{ MAX_MOTIVO_EXTENSION }}</small>
           </div>
         </div>
       </ng-container>
     </ng-container>
 
-    <div class="form-row">
+    <div class="form-row form-row-estado">
       <div class="form-group">
         <label>Estado</label>
         <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="cambiarEstadoEnEdicion($event)">
@@ -463,9 +455,10 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Observaciones</label>
-        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales" maxlength="75"
-          style="min-height:38px;"></textarea>
+        <label>Observaciones <span class="label-hint">(uso interno, no se imprime)</span></label>
+        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+          [maxlength]="MAX_OBSERVACIONES" style="min-height:76px;"></textarea>
+        <small class="char-contador">{{ (solicitudForm.observaciones || '').length }}/{{ MAX_OBSERVACIONES }}</small>
       </div>
     </div>
 
@@ -616,7 +609,7 @@
       Generado por: <strong>{{ cartaData.autorizadoPor || cartaData.creadoPor || '—' }}</strong>
       <ng-container *ngIf="cartaData.autorizadoEn"> — {{ cartaData.autorizadoEn }}</ng-container>
     </span>
-    <span>Impreso: {{ cartaData.fechaHoraImpresion }}</span>
+    <span *ngIf="cartaData.fechaHoraImpresion">Impreso: {{ cartaData.fechaHoraImpresion }}</span>
   </div>
 
   <div class="carta-hro-destinatario">
@@ -638,9 +631,6 @@
       <span class="carta-underline"><strong>PERMISO POR {{ cartaData.tipoPermiso | uppercase }}</strong></span>.
     </p>
     <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
-    <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
-      Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
-    </p>
     <p *ngIf="cartaData.incluyeFinesDeSemana && cartaData.finesDeSemanaCont > 0" class="carta-feriados">
       * Los fines de semana se consideraron como días hábiles en este permiso.
     </p>
