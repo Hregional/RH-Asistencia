@@ -198,3 +198,193 @@ describe('empleados routes — código de expediente y colegiado', () => {
         expect(res.body.data.map(c => c.id)).toEqual([1, 2]);
     });
 });
+
+describe('empleados routes — código de expediente (casos adicionales)', () => {
+    beforeEach(() => {
+        empleados = [];
+        nextId = 1;
+        dbQuery.mockReset();
+        dbQuery.mockImplementation(async (sql, params) => fakeQuery(sql, params));
+        auditMock.mockReset();
+    });
+
+    it('guarda null cuando el código viene vacío o con solo espacios', async () => {
+        const app = await createApp();
+        const vacio = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: '' });
+        const espacios = await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', codigo_expediente: '   ' });
+
+        expect([vacio.status, espacios.status]).toEqual([201, 201]);
+        expect(empleados.map(e => e.codigo_expediente)).toEqual([null, null]);
+    });
+
+    it('permite varios empleados sin código (los vacíos no colisionan)', async () => {
+        const app = await createApp();
+        for (const n of ['1', '2', '3']) {
+            const r = await request(app).post('/empleados').send({ ...base, numero_empleado: n, nombre_completo: 'Emp ' + n });
+            expect(r.status).toBe(201);
+        }
+        expect(empleados).toHaveLength(3);
+    });
+
+    it('rechaza códigos de más de 20 caracteres o con símbolos y acepta el límite', async () => {
+        const app = await createApp();
+        const largo = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: 'A'.repeat(21) });
+        const simbolo = await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', codigo_expediente: 'EXP/01' });
+        const limite = await request(app).post('/empleados').send({ ...base, numero_empleado: '3', nombre_completo: 'Caro', codigo_expediente: 'A'.repeat(20) });
+
+        expect([largo.status, largo.body.field]).toEqual([400, 'codigo_expediente']);
+        expect([simbolo.status, simbolo.body.field]).toEqual([400, 'codigo_expediente']);
+        expect(limite.status).toBe(201);
+    });
+
+    it('detecta duplicados sin importar mayúsculas ni espacios', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: 'EXP-9' });
+        const dup = await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', codigo_expediente: '  exp-9 ' });
+
+        expect([dup.status, dup.body.field]).toEqual([409, 'codigo_expediente']);
+    });
+
+    it('al editar permite cambiar el código, quitarlo y rechaza tomar el de otro', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: 'EXP-1' });
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', codigo_expediente: 'EXP-2' });
+
+        const cambio = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', codigo_expediente: 'exp-10' });
+        expect(cambio.status).toBe(200);
+        expect(empleados[0].codigo_expediente).toBe('EXP-10');
+
+        const tomar = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', codigo_expediente: 'EXP-2' });
+        expect([tomar.status, tomar.body.field]).toEqual([409, 'codigo_expediente']);
+        expect(tomar.body.error).toContain('Beto');
+
+        const quitar = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', codigo_expediente: '' });
+        expect(quitar.status).toBe(200);
+        expect(empleados[0].codigo_expediente).toBeNull();
+    });
+
+    it('traduce ER_DUP_ENTRY de uk_codigo_expediente a 409', async () => {
+        dbQuery.mockImplementation(async (sql, params) => {
+            if (sql.includes('INSERT INTO empleados')) {
+                throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY', sqlMessage: 'Duplicate entry for key uk_codigo_expediente' });
+            }
+            return fakeQuery(sql, params);
+        });
+        const app = await createApp();
+        const res = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: 'EXP-1' });
+
+        expect([res.status, res.body.field]).toEqual([409, 'codigo_expediente']);
+    });
+
+    it('no inserta ni audita cuando el código es inválido', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', codigo_expediente: 'EXP 1' });
+
+        expect(dbQuery.mock.calls.some(([sql]) => sql.includes('INSERT INTO empleados'))).toBe(false);
+        expect(auditMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('empleados routes — número de colegiado (casos adicionales)', () => {
+    beforeEach(() => {
+        empleados = [];
+        nextId = 1;
+        dbQuery.mockReset();
+        dbQuery.mockImplementation(async (sql, params) => fakeQuery(sql, params));
+        auditMock.mockReset();
+    });
+
+    it('rechaza un colegio inexistente', async () => {
+        const app = await createApp();
+        const res = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 999, numero_colegiado: '1' });
+
+        expect([res.status, res.body.field]).toEqual([400, 'colegio_id']);
+        expect(empleados).toHaveLength(0);
+    });
+
+    it('rechaza números de más de 20 dígitos y acepta el límite', async () => {
+        const app = await createApp();
+        const largo = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 1, numero_colegiado: '1'.repeat(21) });
+        const limite = await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', colegio_id: 1, numero_colegiado: '1'.repeat(20) });
+
+        expect([largo.status, largo.body.field]).toEqual([400, 'numero_colegiado']);
+        expect(limite.status).toBe(201);
+    });
+
+    it('acepta colegio_id como texto y recorta espacios del número', async () => {
+        const app = await createApp();
+        const res = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: '2', numero_colegiado: ' 777 ' });
+
+        expect(res.status).toBe(201);
+        expect(empleados[0]).toMatchObject({ colegio_id: 2, numero_colegiado: '777' });
+    });
+
+    it('guarda null en ambos campos cuando no se envía colegiado', async () => {
+        const app = await createApp();
+        const res = await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: '', numero_colegiado: '' });
+
+        expect(res.status).toBe(201);
+        expect(empleados[0]).toMatchObject({ colegio_id: null, numero_colegiado: null });
+    });
+
+    it('al editar puede cambiar de colegio conservando el número si no colisiona', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 1, numero_colegiado: '100' });
+
+        const res = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', colegio_id: 2, numero_colegiado: '100' });
+
+        expect(res.status).toBe(200);
+        expect(empleados[0]).toMatchObject({ colegio_id: 2, numero_colegiado: '100' });
+    });
+
+    it('al editar rechaza cambiar a un colegio donde ese número ya existe', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 1, numero_colegiado: '100' });
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '2', nombre_completo: 'Beto', colegio_id: 2, numero_colegiado: '100' });
+
+        const res = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', colegio_id: 2, numero_colegiado: '100' });
+
+        expect([res.status, res.body.field]).toEqual([409, 'numero_colegiado']);
+        expect(res.body.error).toContain('Beto');
+        expect(empleados[0].colegio_id).toBe(1);
+    });
+
+    it('al editar conserva un colegio desactivado después de asignarlo, pero no permite asignarlo a otro', async () => {
+        const app = await createApp();
+        empleados.push({ id: 1, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 3, numero_colegiado: '50', activo: 1, datos_actualizados: 1 });
+        empleados.push({ id: 2, numero_empleado: '2', nombre_completo: 'Beto', colegio_id: null, numero_colegiado: null, activo: 1, datos_actualizados: 1 });
+        nextId = 3;
+
+        const mismo = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana López', colegio_id: 3, numero_colegiado: '50' });
+        const nuevo = await request(app).put('/empleados/2').send({ ...base, nombre_completo: 'Beto', colegio_id: 3, numero_colegiado: '51' });
+
+        expect(mismo.status).toBe(200);
+        expect([nuevo.status, nuevo.body.field]).toEqual([400, 'colegio_id']);
+    });
+
+    it('al editar exige el número si solo se envía el colegio', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana' });
+
+        const res = await request(app).put('/empleados/1').send({ ...base, nombre_completo: 'Ana', colegio_id: 1 });
+
+        expect([res.status, res.body.field]).toEqual([400, 'numero_colegiado']);
+    });
+
+    it('incluye expediente y colegiado en la auditoría del alta', async () => {
+        const app = await createApp();
+        await request(app).post('/empleados').send({ ...base, numero_empleado: '1', nombre_completo: 'Ana', colegio_id: 1, numero_colegiado: '100', codigo_expediente: 'EXP-1' });
+
+        expect(auditMock).toHaveBeenCalledTimes(1);
+        expect(auditMock.mock.calls[0][0].despues).toMatchObject({ codigo_expediente: 'EXP-1', colegio_id: 1, numero_colegiado: '100' });
+    });
+
+    it('responde 500 si falla la consulta del catálogo de colegios', async () => {
+        dbQuery.mockImplementation(async () => { throw new Error('BD caída'); });
+        const app = await createApp();
+        const res = await request(app).get('/empleados/catalogos/colegios');
+
+        expect(res.status).toBe(500);
+        expect(res.body.success).toBe(false);
+    });
+});
