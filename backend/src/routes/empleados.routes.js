@@ -10,13 +10,99 @@ const { requireAuth } = require('../middlewares/auth');
 //  helpers 
 function isISODate(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d||'')); }
 
+class ValidationError extends Error {
+  constructor(status, field, message) { super(message); this.status = status; this.field = field; }
+}
+
+/**
+ * Normaliza y valida código de expediente y colegiado.
+ * El colegiado se identifica por colegio + número: el mismo número puede existir en otro colegio.
+ * `existente` (en update) permite conservar valores cuando el campo no viene en el body.
+ */
+async function validarExpedienteYColegiado(body, idActual = null, existente = null) {
+  const tiene = (k) => Object.prototype.hasOwnProperty.call(body, k);
+
+  let codigo = tiene('codigo_expediente') ? body.codigo_expediente : existente?.codigo_expediente;
+  codigo = codigo == null ? '' : String(codigo).trim().toUpperCase();
+  if (codigo && !/^[A-Z0-9-]{1,20}$/.test(codigo)) {
+    throw new ValidationError(400, 'codigo_expediente', 'El código de expediente solo admite letras, números y guiones (máx. 20)');
+  }
+
+  const sinColegiado = !tiene('colegio_id') && !tiene('numero_colegiado');
+  let colegioId = sinColegiado ? existente?.colegio_id : body.colegio_id;
+  colegioId = (colegioId === '' || colegioId == null || Number.isNaN(Number(colegioId))) ? null : Number(colegioId);
+  let numero = sinColegiado ? existente?.numero_colegiado : body.numero_colegiado;
+  numero = numero == null ? '' : String(numero).trim();
+
+  if (numero && !/^\d{1,20}$/.test(numero)) {
+    throw new ValidationError(400, 'numero_colegiado', 'El número de colegiado solo admite dígitos (máx. 20)');
+  }
+  if (colegioId && !numero) {
+    throw new ValidationError(400, 'numero_colegiado', 'Ingrese el número de colegiado del colegio seleccionado');
+  }
+  if (numero && !colegioId) {
+    throw new ValidationError(400, 'colegio_id', 'Seleccione el colegio al que pertenece el número de colegiado');
+  }
+
+  let colegio = null;
+  if (colegioId) {
+    colegio = await EmpleadosModel.getColegio(colegioId);
+    const mismoQueAntes = existente && Number(existente.colegio_id) === colegioId;
+    if (!colegio || (!colegio.activo && !mismoQueAntes)) {
+      throw new ValidationError(400, 'colegio_id', 'El colegio seleccionado no es válido');
+    }
+  }
+
+  if (codigo) {
+    const dup = await EmpleadosModel.getByCodigoExpediente(codigo);
+    if (dup && dup.id !== idActual) {
+      throw new ValidationError(409, 'codigo_expediente', `El código de expediente ya está asignado a ${dup.nombre_completo}`);
+    }
+  }
+  if (colegioId && numero) {
+    const dup = await EmpleadosModel.getByColegiado(colegioId, numero);
+    if (dup && dup.id !== idActual) {
+      throw new ValidationError(409, 'numero_colegiado',
+        `El colegiado N° ${numero} del ${colegio.nombre} ya está registrado a ${dup.nombre_completo}`);
+    }
+  }
+
+  return { codigo_expediente: codigo || null, colegio_id: colegioId, numero_colegiado: numero || null };
+}
+
+/** Traduce errores de validación y de índices únicos (carrera entre dos guardados) a respuestas HTTP */
+function responderErrorValidacion(res, error) {
+  if (error instanceof ValidationError) {
+    return res.status(error.status).json({ success: false, field: error.field, error: error.message });
+  }
+  if (error?.code === 'ER_DUP_ENTRY') {
+    const msg = String(error.sqlMessage || error.message || '');
+    if (msg.includes('uk_codigo_expediente')) {
+      return res.status(409).json({ success: false, field: 'codigo_expediente', error: 'El código de expediente ya está asignado a otro empleado' });
+    }
+    if (msg.includes('uk_colegio_numero')) {
+      return res.status(409).json({ success: false, field: 'numero_colegiado', error: 'El número de colegiado ya está registrado en ese colegio' });
+    }
+    if (msg.includes('uk_dpi')) {
+      return res.status(409).json({ success: false, field: 'dpi', error: 'El DPI ya está registrado' });
+    }
+    if (msg.includes('numero_empleado')) {
+      return res.status(409).json({ success: false, field: 'numero_empleado', error: 'El número de empleado ya existe' });
+    }
+  }
+  return null;
+}
+
 // MODELO 
 class EmpleadosModel {
     static async getAll() {
       const [rows] = await db.query(`
-        SELECT id, numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados, creado_en, actualizado_en
-        FROM empleados
-        ORDER BY nombre_completo ASC
+        SELECT e.id, e.numero_empleado, e.codigo_expediente, e.renglon, e.nombre_completo, e.dpi, e.email,
+               e.colegio_id, e.numero_colegiado, c.nombre AS colegio_nombre, c.siglas AS colegio_siglas,
+               e.rol_id, e.area_id, e.activo, e.datos_actualizados, e.creado_en, e.actualizado_en
+        FROM empleados e
+        LEFT JOIN colegios_profesionales c ON c.id = e.colegio_id
+        ORDER BY e.nombre_completo ASC
       `);
       return rows;
     }
@@ -24,9 +110,12 @@ class EmpleadosModel {
 
     static async getById(id) {
       const [rows] = await db.query(`
-        SELECT id, numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados, creado_en, actualizado_en
-        FROM empleados
-        WHERE id = ?
+        SELECT e.id, e.numero_empleado, e.codigo_expediente, e.renglon, e.nombre_completo, e.dpi, e.email,
+               e.colegio_id, e.numero_colegiado, c.nombre AS colegio_nombre, c.siglas AS colegio_siglas,
+               e.rol_id, e.area_id, e.activo, e.datos_actualizados, e.creado_en, e.actualizado_en
+        FROM empleados e
+        LEFT JOIN colegios_profesionales c ON c.id = e.colegio_id
+        WHERE e.id = ?
       `, [id]);
       return rows.length ? rows[0] : null;
     }
@@ -49,24 +138,54 @@ class EmpleadosModel {
       return rows.length ? rows[0] : null;
     }
 
-  static async create({ numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo = 1, datos_actualizados = 1 }) {
+    static async getByCodigoExpediente(codigo) {
+      if (!codigo) return null;
+      const [rows] = await db.query(`SELECT id, nombre_completo FROM empleados WHERE codigo_expediente = ?`, [codigo]);
+      return rows.length ? rows[0] : null;
+    }
+
+    static async getByColegiado(colegio_id, numero_colegiado) {
+      if (!colegio_id || !numero_colegiado) return null;
+      const [rows] = await db.query(
+        `SELECT id, nombre_completo FROM empleados WHERE colegio_id = ? AND numero_colegiado = ?`,
+        [colegio_id, numero_colegiado]
+      );
+      return rows.length ? rows[0] : null;
+    }
+
+    static async getColegio(id) {
+      const [rows] = await db.query(`SELECT id, nombre, siglas, activo FROM colegios_profesionales WHERE id = ?`, [id]);
+      return rows.length ? rows[0] : null;
+    }
+
+    static async getColegios() {
+      const [rows] = await db.query(`
+        SELECT id, nombre, siglas FROM colegios_profesionales WHERE activo = 1 ORDER BY nombre ASC
+      `);
+      return rows;
+    }
+
+  static async create({ numero_empleado, codigo_expediente = null, renglon, nombre_completo, dpi, email, colegio_id = null, numero_colegiado = null, rol_id, area_id, activo = 1, datos_actualizados = 1 }) {
     let normalizedAreaId = (area_id === '' || area_id === undefined || area_id === null || Number.isNaN(Number(area_id)))
       ? null : Number(area_id);
     const normalizedRolId = (rol_id === '' || rol_id === undefined || rol_id === null || Number.isNaN(Number(rol_id)))
       ? null : Number(rol_id);
 
     const [result] = await db.query(`
-      INSERT INTO empleados (numero_empleado, renglon, nombre_completo, dpi, email, rol_id, area_id, activo, datos_actualizados)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [numero_empleado, renglon || null, nombre_completo, dpi || null, email || null, normalizedRolId, normalizedAreaId, activo, datos_actualizados ? 1 : 0]);
+      INSERT INTO empleados (numero_empleado, codigo_expediente, renglon, nombre_completo, dpi, email, colegio_id, numero_colegiado, rol_id, area_id, activo, datos_actualizados)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [numero_empleado, codigo_expediente, renglon || null, nombre_completo, dpi || null, email || null, colegio_id, numero_colegiado, normalizedRolId, normalizedAreaId, activo, datos_actualizados ? 1 : 0]);
 
     return { 
       id: result.insertId, 
       numero_empleado, 
+      codigo_expediente,
       renglon, 
       nombre_completo,
       dpi: dpi || null,
       email: email || null,
+      colegio_id,
+      numero_colegiado,
       rol_id, 
       area_id: normalizedAreaId, 
       activo,
@@ -74,7 +193,7 @@ class EmpleadosModel {
     };
   }
 
-  static async update(id, { nombre_completo, dpi, email, rol_id, area_id, activo, renglon, datos_actualizados }) {
+  static async update(id, { nombre_completo, dpi, email, rol_id, area_id, activo, renglon, datos_actualizados, codigo_expediente, colegio_id, numero_colegiado }) {
     let normalizedAreaId = (area_id === '' || area_id === undefined || area_id === null || Number.isNaN(Number(area_id)))
       ? null : Number(area_id);
     const normalizedRolId = (rol_id === '' || rol_id === undefined || rol_id === null || Number.isNaN(Number(rol_id)))
@@ -82,9 +201,11 @@ class EmpleadosModel {
 
     const [result] = await db.query(`
       UPDATE empleados 
-      SET nombre_completo=?, dpi=?, email=?, rol_id=?, area_id=?, activo=?, renglon=?, datos_actualizados=?
+      SET nombre_completo=?, dpi=?, email=?, rol_id=?, area_id=?, activo=?, renglon=?, datos_actualizados=?,
+          codigo_expediente=?, colegio_id=?, numero_colegiado=?
       WHERE id=?
-    `, [nombre_completo, dpi || null, email || null, normalizedRolId, normalizedAreaId, activo, renglon || null, datos_actualizados ? 1 : 0, id]);
+    `, [nombre_completo, dpi || null, email || null, normalizedRolId, normalizedAreaId, activo, renglon || null, datos_actualizados ? 1 : 0,
+        codigo_expediente, colegio_id, numero_colegiado, id]);
 
     if (result.affectedRows === 0) throw new Error('Empleado no encontrado');
     return this.getById(id);
@@ -186,8 +307,11 @@ class EmpleadosModel {
           }
         }
 
+        const extra = await validarExpedienteYColegiado(req.body);
+
         const nuevo = await EmpleadosModel.create({
           numero_empleado,
+          ...extra,
           renglon,
           nombre_completo,
           dpi: dpi || null,
@@ -201,6 +325,7 @@ class EmpleadosModel {
         await audit({ evento: 'CREATE', entidad: 'empleados', entidad_id: nuevo.id, antes: null, despues: nuevo, req });
         return res.status(201).json({ success: true, message: 'Empleado creado', data: nuevo });
       } catch (error) {
+        if (responderErrorValidacion(res, error)) return;
         return res.status(500).json({ success: false, error: 'Error creando empleado', message: error.message });
       }
     }
@@ -225,7 +350,20 @@ class EmpleadosModel {
           }
         }
 
+        if (email && email !== existente.email) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            return res.status(400).json({ success: false, field: 'email', error: 'Correo inválido' });
+          }
+          const duplicado = await EmpleadosModel.getByEmail(email);
+          if (duplicado && duplicado.id !== parseInt(id, 10)) {
+            return res.status(409).json({ success: false, field: 'email', error: 'El correo ya existe' });
+          }
+        }
+
+        const extra = await validarExpedienteYColegiado(req.body, parseInt(id, 10), existente);
+
         const actualizado = await EmpleadosModel.update(parseInt(id, 10), {
+          ...extra,
           nombre_completo,
           dpi: dpi || null,
           email: email || null,
@@ -239,6 +377,7 @@ class EmpleadosModel {
         await audit({ evento: 'UPDATE', entidad: 'empleados', entidad_id: parseInt(id, 10), antes: existente, despues: actualizado, req });
         return res.json({ success: true, message: 'Empleado actualizado', data: actualizado });
       } catch (error) {
+        if (responderErrorValidacion(res, error)) return;
         return res.status(500).json({ success: false, error: 'Error actualizando empleado', message: error.message });
       }
     }
@@ -519,7 +658,17 @@ class EmpleadosModel {
     }
   });
 
-  //  RUTAS CRUD 
+  //  CATÁLOGO DE COLEGIOS (antes de '/:id')
+  router.get('/catalogos/colegios', async (_req, res) => {
+    try {
+      const colegios = await EmpleadosModel.getColegios();
+      res.json({ success: true, data: colegios, count: colegios.length });
+    } catch (err) {
+      res.status(500).json({ success: false, error: 'Error obteniendo colegios', message: err.message });
+    }
+  });
+
+  //  RUTAS CRUD
   router.get('/', EmpleadosController.getAllEmpleados);
   router.get('/activos', EmpleadosController.getEmpleadosActivos);
   router.get('/:id', EmpleadosController.getEmpleadoById);

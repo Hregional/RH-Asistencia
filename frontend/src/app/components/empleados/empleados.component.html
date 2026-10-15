@@ -8,8 +8,8 @@
   </div>
 
   <!-- Botones y Busqueda -->
-  <div class="actions" style="display:flex; gap:.75rem; align-items:center;" *ngIf="!showForm">
-    <div *ngIf="canCreateEdit()" style="display:flex; gap:.5rem;">
+  <div class="actions" *ngIf="!showForm">
+    <div class="actions-buttons" *ngIf="canCreateEdit()">
       <button class="btn btn-primary" (click)="showCreateForm()" [disabled]="loading">
         + Agregar Empleado
       </button>
@@ -19,10 +19,9 @@
     </div>
 
     <!-- Caja de búsqueda -->
-    <div style="margin-left:auto; display:flex; gap:.5rem; align-items:center;">
-      <input type="text" [(ngModel)]="searchTerm" [disabled]="loading"
-        placeholder="Buscar por numero, nombre, rol o area"
-        style="min-width: 320px; padding:.5rem .75rem; border:1px solid #ccc; border-radius:.5rem;" />
+    <div class="search-box">
+      <input type="text" [(ngModel)]="searchTerm" [disabled]="loading" (ngModelChange)="currentPage = 1; updatePagination()"
+        placeholder="Buscar por ID, expediente, colegiado, nombre, rol o área" aria-label="Buscar empleados" />
       <button *ngIf="searchTerm" class="btn btn-secondary btn-small" (click)="clearSearch()">Limpiar</button>
     </div>
   </div>
@@ -95,136 +94,181 @@
   <div class="form-container" *ngIf="showForm">
     <h3>{{ editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado' }}</h3>
 
-    <form #f="ngForm" (ngSubmit)="saveEmpleado(f)">
+    <form #f="ngForm" (ngSubmit)="saveEmpleado(f)" novalidate>
 
-      <!-- Fila 1: Identificación + Renglón -->
-      <div class="form-row-emp">
-        <div class="form-group">
-          <label>Identificación <span class="req">*</span></label>
-          <input type="text" name="numero_empleado" [(ngModel)]="empleadofrorm.numero_empleado" required minlength="1"
-            maxlength="32" inputmode="numeric" pattern="^[0-9]+$" placeholder="Ej: 50234567"
-            [disabled]="!!editingEmpleado"
-            (input)="onNumeroInput($event)" (blur)="clearServerError('numero')" />
-          <small class="field-error" *ngIf="f.submitted && f.controls['numero_empleado']?.errors?.['required']">Obligatorio.</small>
-          <small class="field-error" *ngIf="f.controls['numero_empleado']?.errors?.['pattern']">Solo números.</small>
-          <small class="field-error" *ngIf="serverErrors.numeroDuplicado">Este número ya está registrado.</small>
+      <!-- ── Identificación ── -->
+      <fieldset class="form-section">
+        <legend class="form-section-title">Identificación</legend>
+
+        <div class="form-row-emp">
+          <div class="form-group">
+            <label for="emp-numero">Identificación <span class="req">*</span></label>
+            <input id="emp-numero" type="text" name="numero_empleado" [(ngModel)]="empleadofrorm.numero_empleado" required minlength="1"
+              maxlength="32" inputmode="numeric" pattern="^[0-9]+$" placeholder="Ej: 50234567"
+              [disabled]="!!editingEmpleado"
+              (input)="onNumeroInput($event)" (blur)="clearServerError('numero')" />
+            <small class="field-hint" *ngIf="!!editingEmpleado">No se puede modificar (vinculado al biométrico).</small>
+            <small class="field-error" *ngIf="f.submitted && f.controls['numero_empleado']?.errors?.['required']">Obligatorio.</small>
+            <small class="field-error" *ngIf="f.controls['numero_empleado']?.errors?.['pattern']">Solo números.</small>
+            <small class="field-error" *ngIf="serverErrors.numeroDuplicado">Este número ya está registrado.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="emp-expediente">Código de expediente</label>
+            <input id="emp-expediente" type="text" name="codigo_expediente" [(ngModel)]="empleadofrorm.codigo_expediente"
+              maxlength="20" placeholder="Ej: EXP-0452" autocomplete="off"
+              [class.input-error]="!!serverErrors.codigo"
+              (input)="onCodigoInput($event)" />
+            <small class="field-hint" *ngIf="!serverErrors.codigo">Opcional · ubica el expediente físico en RH. Único.</small>
+            <small class="field-error" *ngIf="serverErrors.codigo">{{ serverErrors.codigo }}</small>
+          </div>
+
+          <div class="form-group">
+            <label for="emp-renglon">Renglón marcaje <span class="req">*</span></label>
+            <select id="emp-renglon" name="renglon" [(ngModel)]="empleadofrorm.renglon" required>
+              <option [ngValue]="null">Seleccionar renglón...</option>
+              <optgroup label="Con marcaje obligatorio">
+                <option value="011">011</option>
+                <option value="036">036</option>
+                <option value="022">022</option>
+                <option value="021">021</option>
+              </optgroup>
+              <optgroup label="Sin marcaje obligatorio">
+                <option value="182">182</option>
+                <option value="189">189</option>
+                <option value="186">186</option>
+                <option value="183">183</option>
+              </optgroup>
+            </select>
+            <small class="field-error" *ngIf="f.submitted && f.controls['renglon']?.errors?.['required']">Obligatorio.</small>
+          </div>
         </div>
 
         <div class="form-group">
-          <label>Renglón marcaje <span class="req">*</span></label>
-          <select name="renglon" [(ngModel)]="empleadofrorm.renglon" required>
-            <option [ngValue]="null">Seleccionar renglón...</option>
-            <optgroup label="Con marcaje obligatorio">
-              <option value="011">011</option>
-              <option value="036">036</option>
-              <option value="022">022</option>
-              <option value="021">021</option>
-            </optgroup>
-            <optgroup label="Sin marcaje obligatorio">
-              <option value="182">182</option>
-              <option value="189">189</option>
-              <option value="186">186</option>
-              <option value="183">183</option>
-            </optgroup>
-          </select>
-          <small class="field-error" *ngIf="f.submitted && f.controls['renglon']?.errors?.['required']">Obligatorio.</small>
-        </div>
-      </div>
-
-      <!-- Fila 2: Nombre completo -->
-      <div class="form-group">
-        <label>Nombre Completo <span class="req">*</span></label>
-        <input type="text" name="nombre_completo" [(ngModel)]="empleadofrorm.nombre_completo" required minlength="3"
-          maxlength="100" placeholder="Ej: María López García"
-          (input)="onNombreInput($event)" (blur)="clearServerError('nombre')">
-        <small class="field-error" *ngIf="f.submitted && f.controls['nombre_completo']?.errors?.['required']">Obligatorio.</small>
-        <small class="field-error" *ngIf="f.controls['nombre_completo']?.errors?.['minlength']">Mínimo 3 caracteres.</small>
-        <small class="field-error" *ngIf="serverErrors.nombreDuplicado">Ya existe un empleado con este nombre.</small>
-      </div>
-
-      <!-- Fila 3: DPI + Correo -->
-      <div class="form-row-emp">
-        <div class="form-group">
-          <label>DPI <small style="font-weight:400;color:#888;">(13 dígitos)</small></label>
-          <input type="text" name="dpi" [(ngModel)]="empleadofrorm.dpi"
-            maxlength="13" inputmode="numeric"
-            [class.dpi-valido]="dpiEstado === 'valido'"
-            [class.dpi-invalido]="dpiEstado === 'invalido' && !!empleadofrorm.dpi"
-            (input)="onDpiInput($event)"
-            (blur)="clearServerError('dpi')" />
-          <small class="field-hint dpi-ok"  *ngIf="dpiEstado === 'valido'">✓ DPI válido</small>
-          <small class="field-hint dpi-err" *ngIf="dpiEstado === 'invalido' && !!empleadofrorm.dpi">
-            {{ (empleadofrorm.dpi?.length || 0) < 13 ? 'Faltan ' + (13 - (empleadofrorm.dpi?.length || 0)) + ' dígito(s)' : 'DPI inválido (verifique departamento/municipio)' }}
-          </small>
-          <small class="field-error" *ngIf="serverErrors.dpiDuplicado">Este DPI ya está registrado.</small>
+          <label for="emp-nombre">Nombre Completo <span class="req">*</span></label>
+          <input id="emp-nombre" type="text" name="nombre_completo" [(ngModel)]="empleadofrorm.nombre_completo" required minlength="3"
+            maxlength="100" placeholder="Ej: María López García"
+            (input)="onNombreInput($event)" (blur)="clearServerError('nombre')">
+          <small class="field-error" *ngIf="f.submitted && f.controls['nombre_completo']?.errors?.['required']">Obligatorio.</small>
+          <small class="field-error" *ngIf="f.controls['nombre_completo']?.errors?.['minlength']">Mínimo 3 caracteres.</small>
+          <small class="field-error" *ngIf="serverErrors.nombreDuplicado">Ya existe un empleado con este nombre.</small>
         </div>
 
-        <div class="form-group">
-          <label>Correo <small style="font-weight:400;color:#888;">(opcional)</small></label>
-          <input type="email" name="email" [(ngModel)]="empleadofrorm.email" maxlength="120"
-            (input)="onEmailInput($event)" (blur)="clearServerError('email')"
-            pattern="^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$">
-          <small class="field-error" *ngIf="f.controls['email']?.errors?.['pattern']">Correo no válido.</small>
-          <small class="field-error" *ngIf="serverErrors.emailDuplicado">Este correo ya está registrado.</small>
-        </div>
-      </div>
+        <div class="form-row-emp">
+          <div class="form-group">
+            <label for="emp-dpi">DPI <small class="label-hint">(13 dígitos)</small></label>
+            <input id="emp-dpi" type="text" name="dpi" [(ngModel)]="empleadofrorm.dpi"
+              maxlength="13" inputmode="numeric" placeholder="Ej: 1234567890101"
+              [class.dpi-valido]="dpiEstado === 'valido'"
+              [class.dpi-invalido]="dpiEstado === 'invalido' && !!empleadofrorm.dpi"
+              (input)="onDpiInput($event)"
+              (blur)="clearServerError('dpi')" />
+            <small class="field-hint dpi-ok"  *ngIf="dpiEstado === 'valido'">✓ DPI válido</small>
+            <small class="field-hint dpi-err" *ngIf="dpiEstado === 'invalido' && !!empleadofrorm.dpi">
+              {{ (empleadofrorm.dpi?.length || 0) < 13 ? 'Faltan ' + (13 - (empleadofrorm.dpi?.length || 0)) + ' dígito(s)' : 'DPI inválido (verifique departamento/municipio)' }}
+            </small>
+            <small class="field-error" *ngIf="serverErrors.dpiDuplicado">Este DPI ya está registrado.</small>
+          </div>
 
-      <!-- Fila 4: Rol + Área -->
-      <div class="form-row-emp">
-        <div class="form-group">
-          <label>Rol</label>
-          <select [(ngModel)]="empleadofrorm.rol_id" name="rol_id">
-            <option [ngValue]="null">Seleccionar rol...</option>
-            <option *ngFor="let rol of roles" [ngValue]="rol.id">{{ rol.nombre }}</option>
-          </select>
+          <div class="form-group">
+            <label for="emp-email">Correo <small class="label-hint">(opcional)</small></label>
+            <input id="emp-email" type="email" name="email" [(ngModel)]="empleadofrorm.email" maxlength="120"
+              placeholder="Ej: maria.lopez@correo.com"
+              (input)="onEmailInput($event)" (blur)="clearServerError('email')"
+              pattern="^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$">
+            <small class="field-error" *ngIf="f.controls['email']?.errors?.['pattern']">Correo no válido.</small>
+            <small class="field-error" *ngIf="serverErrors.emailDuplicado">Este correo ya está registrado.</small>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ── Datos profesionales ── -->
+      <fieldset class="form-section">
+        <legend class="form-section-title">Datos profesionales</legend>
+
+        <div class="form-row-emp">
+          <div class="form-group form-group-wide">
+            <label for="emp-colegio">Colegio profesional</label>
+            <select id="emp-colegio" name="colegio_id" [(ngModel)]="empleadofrorm.colegio_id" (ngModelChange)="onColegioChange()"
+              [class.input-error]="f.submitted && colegiadoIncompleto === 'colegio'">
+              <option [ngValue]="null">Sin colegiado</option>
+              <option *ngFor="let c of colegios" [ngValue]="c.id">{{ c.nombre }}</option>
+            </select>
+            <small class="field-error" *ngIf="f.submitted && colegiadoIncompleto === 'colegio'">Seleccione el colegio del número ingresado.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="emp-colegiado">N° de colegiado <span class="req" *ngIf="empleadofrorm.colegio_id">*</span></label>
+            <input id="emp-colegiado" type="text" name="numero_colegiado" [(ngModel)]="empleadofrorm.numero_colegiado"
+              maxlength="20" inputmode="numeric" placeholder="Ej: 12345" autocomplete="off"
+              [class.input-error]="!!serverErrors.colegiado || (f.submitted && colegiadoIncompleto === 'numero')"
+              (input)="onColegiadoInput($event)" />
+            <small class="field-error" *ngIf="f.submitted && colegiadoIncompleto === 'numero'">Ingrese el número de colegiado.</small>
+            <small class="field-error" *ngIf="serverErrors.colegiado">{{ serverErrors.colegiado }}</small>
+          </div>
+        </div>
+        <small class="field-hint section-hint">
+          El número se valida por colegio: el mismo número puede existir en otro colegio, pero no repetirse en el mismo.
+        </small>
+      </fieldset>
+
+      <!-- ── Asignación ── -->
+      <fieldset class="form-section">
+        <legend class="form-section-title">Asignación</legend>
+
+        <div class="form-row-emp">
+          <div class="form-group">
+            <label for="emp-rol">Rol</label>
+            <select id="emp-rol" [(ngModel)]="empleadofrorm.rol_id" name="rol_id">
+              <option [ngValue]="null">Seleccionar rol...</option>
+              <option *ngFor="let rol of roles" [ngValue]="rol.id">{{ rol.nombre }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="emp-area">Área</label>
+            <select id="emp-area" [(ngModel)]="empleadofrorm.area_id" name="area_id">
+              <option [ngValue]="null">Seleccionar área...</option>
+              <option *ngFor="let area of areas" [ngValue]="area.id">{{ area.nombre }}</option>
+            </select>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Área</label>
-          <select [(ngModel)]="empleadofrorm.area_id" name="area_id">
-            <option [ngValue]="null">Seleccionar área...</option>
-            <option *ngFor="let area of areas" [ngValue]="area.id">{{ area.nombre }}</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Fila 5: Activo + Datos Actualizados (toggle iOS) -->
-      <div class="form-row-emp form-row-toggles">
-        <div class="form-group toggle-group">
-          <label>Activo</label>
-          <label class="toggle-switch-emp">
-            <input type="checkbox" [(ngModel)]="empleadofrorm.activo" name="activo" />
-            <span class="toggle-slider-emp"></span>
-          </label>
-        </div>
-
-        <div class="form-group toggle-group">
-          <label>Datos Actualizados</label>
-          <label class="toggle-switch-emp">
-            <input type="checkbox" [(ngModel)]="empleadofrorm.datos_actualizados" name="datos_actualizados" />
-            <span class="toggle-slider-emp"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Jefatura -->
-      <div class="form-group">
-        <div class="jefatura-group">
-          <span class="jefatura-title">Jefatura en su área</span>
-          <div class="jefatura-opciones">
-            <label class="jefatura-opcion">
-              <input type="radio" name="supervision" [(ngModel)]="supervision" value="NINGUNO" />
-              <span>Ninguno</span>
-            </label>
-            <label class="jefatura-opcion">
-              <input type="radio" name="supervision" [(ngModel)]="supervision" value="ESPECIFICO" />
-              <span>Supervisor específico</span>
-            </label>
-            <label class="jefatura-opcion">
-              <input type="radio" name="supervision" [(ngModel)]="supervision" value="TITULAR" />
-              <span>Jefe titular</span>
+        <div class="form-row-toggles">
+          <div class="toggle-group">
+            <span class="toggle-label">Activo</span>
+            <label class="toggle-switch-emp" aria-label="Activo">
+              <input type="checkbox" [(ngModel)]="empleadofrorm.activo" name="activo" />
+              <span class="toggle-slider-emp"></span>
             </label>
           </div>
+
+          <div class="toggle-group">
+            <span class="toggle-label">Datos Actualizados</span>
+            <label class="toggle-switch-emp" aria-label="Datos Actualizados">
+              <input type="checkbox" [(ngModel)]="empleadofrorm.datos_actualizados" name="datos_actualizados" />
+              <span class="toggle-slider-emp"></span>
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- Jefatura -->
+      <div class="jefatura-group">
+        <span class="jefatura-title">Jefatura en su área</span>
+        <div class="jefatura-opciones">
+          <label class="jefatura-opcion">
+            <input type="radio" name="supervision" [(ngModel)]="supervision" value="NINGUNO" />
+            <span>Ninguno</span>
+          </label>
+          <label class="jefatura-opcion">
+            <input type="radio" name="supervision" [(ngModel)]="supervision" value="ESPECIFICO" />
+            <span>Supervisor específico</span>
+          </label>
+          <label class="jefatura-opcion">
+            <input type="radio" name="supervision" [(ngModel)]="supervision" value="TITULAR" />
+            <span>Jefe titular</span>
+          </label>
         </div>
       </div>
 
@@ -243,6 +287,7 @@
       <thead>
         <tr>
           <th>ID</th>
+          <th>Expediente</th>
           <th>Nombre Completo</th>
           <th>Rol</th>
           <th>Área</th>
@@ -254,7 +299,14 @@
       <tbody>
         <tr *ngFor="let emp of paginatedEmpleados; trackBy: trackById" [class.inactive]="!emp.activo">
           <td>{{ emp.numero_empleado }}</td>
-          <td>{{ emp.nombre_completo }}</td>
+          <td class="td-expediente">
+            <span *ngIf="emp.codigo_expediente; else sinExpediente">{{ emp.codigo_expediente }}</span>
+            <ng-template #sinExpediente><span class="td-vacio">—</span></ng-template>
+          </td>
+          <td>
+            {{ emp.nombre_completo }}
+            <small class="td-sub" *ngIf="getColegiadoLabel(emp) as col" [title]="emp.colegio_nombre || ''">{{ col }}</small>
+          </td>
           <td>{{ getRolNombre(emp.rol_id) }}</td>
           <td>{{ getAreaNombre(emp.area_id) }}</td>
           <td [ngClass]="getEstadoEmpleadoClass(emp)">
@@ -276,13 +328,14 @@
                 (click)="deleteEmpleado(emp)">Eliminar</button>
             </div>
           </td>
+        </tr>
 
         <tr *ngIf="!loading && searchTerm && filteredEmpleados.length === 0">
-          <td colspan="7" class="no-data">Sin coincidencias para "{{ searchTerm }}".</td>
+          <td colspan="8" class="no-data">Sin coincidencias para "{{ searchTerm }}".</td>
         </tr>
 
         <tr *ngIf="!loading && !searchTerm && empleados.length === 0">
-          <td colspan="7" class="no-data">No hay empleados registrados.</td>
+          <td colspan="8" class="no-data">No hay empleados registrados.</td>
         </tr>
 
       </tbody>

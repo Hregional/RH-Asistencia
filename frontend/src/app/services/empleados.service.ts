@@ -11,10 +11,15 @@ export interface Empleado {
   empleado: never[];
   id?: number;
   numero_empleado: string;
+  codigo_expediente?: string | null;
   renglon?: string;
   nombre_completo: string;
   dpi?: string | null;
   email: string;
+  colegio_id?: number | null;
+  numero_colegiado?: string | null;
+  colegio_nombre?: string | null;
+  colegio_siglas?: string | null;
   rol_id: number | null;
   area_id: number | null;
   activo: boolean;
@@ -33,6 +38,7 @@ export interface ApiResponse<T = any> {
 
 export interface Rol  { id: number; nombre: string; descripcion?: string | null; }  
 export interface Area { id: number; nombre: string; descripcion?: string | null; } 
+export interface Colegio { id: number; nombre: string; siglas?: string | null; }
 @Injectable({ providedIn: "root" })
 export class EmpleadosService {
   private empleadosSubject = new BehaviorSubject<Empleado[]>([]);
@@ -104,6 +110,11 @@ importarDesdeBiometrico(): Observable<any> {
   return this.http.post<ApiResponse<any>>(this.rolesUrl, body);
   }
 
+
+  //  Catálogo Colegios profesionales
+  getColegios(): Observable<ApiResponse<Colegio[]>> {
+    return this.http.get<ApiResponse<Colegio[]>>(`${this.empleadosUrl}/catalogos/colegios`);
+  }
 
   //  Catálogo Áreas 
   getAreas(): Observable<ApiResponse<Area[]>> {
