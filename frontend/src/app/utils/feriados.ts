@@ -5,6 +5,10 @@
  * Feriados fijos: editar el objeto FERIADOS_FIJOS con formato 'MM-DD'
  * Feriados variables por año: editar FERIADOS_VARIABLES con formato 'YYYY-MM-DD'
  * Semana Santa: se calcula automáticamente (Jueves, Viernes y Sábado Santo)
+ *
+ * IMPORTANTE: los feriados solo se usan como referencia visual en el calendario.
+ * El conteo de días de permisos y la fecha extendida NO descuentan feriados;
+ * si un feriado no debe contarse, el usuario ajusta las fechas manualmente.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -12,20 +16,39 @@
 const FERIADOS_FIJOS: Record<string, string> = {
   '01-01': 'Año Nuevo',
   '05-01': 'Día del Trabajo',
+  '05-10': 'Día de la Madre',
+  '06-17': 'Día del Padre',
   '06-30': 'Día del Ejército',
   '09-15': 'Independencia de Guatemala',
+  '10-07': 'Fiesta Patronal Virgen del Rosario',
   '10-20': 'Revolución de Octubre',
   '11-01': 'Día de Todos los Santos',
-  '12-24': 'Nochebuena',
   '12-25': 'Navidad',
   '12-31': 'Fin de Año',
 };
 
-// Feriados que varían por año (agregar según sea necesario)
-// Formato: 'YYYY-MM-DD': 'Nombre'
+// Feriados que varían por año — solo para casos especiales no recurrentes
 const FERIADOS_VARIABLES: Record<string, string> = {
-  // Ejemplo: '2025-10-20': 'Feriado especial'
 };
+
+/**
+ * Opciones para cálculo de feriados condicionales
+ */
+export interface OpcionesFeriados {
+  aplicaMadre?: boolean; // Default true if not specified
+  aplicaPadre?: boolean; // Default true if not specified
+}
+
+/**
+ * Devuelve el primer viernes de septiembre de un año (Día del Salubrista)
+ */
+function getPrimerViernesSeptiembre(year: number): string {
+  const d = new Date(year, 8, 1); // 1 de septiembre
+  while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
+}
 
 /**
  * Calcula la fecha de Pascua para un año dado (algoritmo de Butcher)
@@ -67,16 +90,36 @@ export function getSemSanta(year: number): Record<string, string> {
 }
 
 /**
+ * Detecta si una fecha dada corresponde a Día de la Madre (10 de mayo) o Día del Padre (17 de junio)
+ */
+export function esFeriadoMadreOPadre(fecha: Date): 'MADRE' | 'PADRE' | null {
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  if (mm === '05' && dd === '10') return 'MADRE';
+  if (mm === '06' && dd === '17') return 'PADRE';
+  return null;
+}
+
+/**
  * Verifica si una fecha es feriado en Guatemala
  */
-export function esFeriado(fecha: Date): boolean {
+export function esFeriado(fecha: Date, opciones?: OpcionesFeriados): boolean {
   const mm = String(fecha.getMonth() + 1).padStart(2, '0');
   const dd = String(fecha.getDate()).padStart(2, '0');
   const key = `${mm}-${dd}`;
   const isoKey = `${fecha.getFullYear()}-${mm}-${dd}`;
 
+  const tipoCondicional = esFeriadoMadreOPadre(fecha);
+  if (tipoCondicional === 'MADRE') {
+    return opciones?.aplicaMadre !== false;
+  }
+  if (tipoCondicional === 'PADRE') {
+    return opciones?.aplicaPadre !== false;
+  }
+
   if (FERIADOS_FIJOS[key]) return true;
   if (FERIADOS_VARIABLES[isoKey]) return true;
+  if (isoKey === getPrimerViernesSeptiembre(fecha.getFullYear())) return true;
 
   const semSanta = getSemSanta(fecha.getFullYear());
   return !!semSanta[key];
@@ -85,26 +128,47 @@ export function esFeriado(fecha: Date): boolean {
 /**
  * Devuelve el nombre del feriado o null si no es feriado
  */
-export function getNombreFeriado(fecha: Date): string | null {
+export function getNombreFeriado(fecha: Date, opciones?: OpcionesFeriados): string | null {
   const mm = String(fecha.getMonth() + 1).padStart(2, '0');
   const dd = String(fecha.getDate()).padStart(2, '0');
   const key = `${mm}-${dd}`;
   const isoKey = `${fecha.getFullYear()}-${mm}-${dd}`;
 
+  const tipoCondicional = esFeriadoMadreOPadre(fecha);
+  if (tipoCondicional === 'MADRE') {
+    return opciones?.aplicaMadre !== false ? 'Día de la Madre' : null;
+  }
+  if (tipoCondicional === 'PADRE') {
+    return opciones?.aplicaPadre !== false ? 'Día del Padre' : null;
+  }
+
   if (FERIADOS_FIJOS[key]) return FERIADOS_FIJOS[key];
   if (FERIADOS_VARIABLES[isoKey]) return FERIADOS_VARIABLES[isoKey];
+  if (isoKey === getPrimerViernesSeptiembre(fecha.getFullYear())) return 'Día del Salubrista';
 
   const semSanta = getSemSanta(fecha.getFullYear());
   return semSanta[key] || null;
 }
 
 /**
- * Verifica si una fecha es día hábil (lunes-viernes y no feriado)
+ * Devuelve todos los feriados de un mes/año para marcar puntos de color en el calendario
  */
-export function esDiaHabil(fecha: Date): boolean {
-  const diaSemana = fecha.getDay();
-  if (diaSemana === 0 || diaSemana === 6) return false;
-  return !esFeriado(fecha);
+export function getFeriadosDelMes(year: number, month: number, opciones?: OpcionesFeriados): Record<number, { nombre: string; esCondicional?: boolean }> {
+  const result: Record<number, { nombre: string; esCondicional?: boolean }> = {};
+  const diasEnMes = new Date(year, month + 1, 0).getDate();
+
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const fecha = new Date(year, month, dia);
+    const cond = esFeriadoMadreOPadre(fecha);
+    const nombre = getNombreFeriado(fecha, opciones);
+    if (nombre) {
+      result[dia] = {
+        nombre,
+        esCondicional: !!cond
+      };
+    }
+  }
+  return result;
 }
 
 /** Parsea 'YYYY-MM-DD' sin conversión de zona horaria */
@@ -113,31 +177,19 @@ export function parseFechaLocal(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-/** Calcula días hábiles GT entre dos fechas (inclusive) */
-export function calcularDiasHabilesGT(inicio: Date, fin: Date): number {
+/**
+ * Cuenta los días del permiso entre dos fechas (inclusive).
+ * NO descuenta feriados: solo omite sábados y domingos cuando incluyeFDS=false.
+ */
+export function calcularDiasPermiso(inicio: Date, fin: Date, incluyeFDS: boolean): number {
   let dias = 0;
   const cur = new Date(inicio);
   while (cur <= fin) {
-    if (esDiaHabil(cur)) dias++;
+    const d = cur.getDay();
+    if (incluyeFDS || (d !== 0 && d !== 6)) dias++;
     cur.setDate(cur.getDate() + 1);
   }
   return dias;
-}
-
-/** Devuelve lista de feriados hábiles que caen en el rango */
-export function feriadosEnRango(inicio: Date, fin: Date): string[] {
-  const lista: string[] = [];
-  const cur = new Date(inicio);
-  while (cur <= fin) {
-    const d = cur.getDay();
-    if (d !== 0 && d !== 6 && esFeriado(cur)) {
-      const dd = String(cur.getDate()).padStart(2, '0');
-      const mm = String(cur.getMonth() + 1).padStart(2, '0');
-      lista.push(`${dd}/${mm} ${getNombreFeriado(cur)}`);
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  return lista;
 }
 
 /** Cuenta fines de semana en el rango */
@@ -152,22 +204,9 @@ export function finesDeSemanaEnRango(inicio: Date, fin: Date): number {
   return count;
 }
 
-/** Calcula días considerando fines de semana como hábiles (solo omite feriados GT) */
-export function calcularDiasConFDS(inicio: Date, fin: Date): number {
-  let dias = 0;
-  const cur = new Date(inicio);
-  while (cur <= fin) {
-    if (!esFeriado(cur)) dias++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  return dias;
-}
-
 /**
- * Suma N días desde fecha_base omitiendo solo feriados GT.
- * Cuando incluyeFDS=true los fines de semana cuentan como días hábiles.
- * Cuando incluyeFDS=false usa la lógica estándar (omite FDS y feriados).
- * Devuelve string 'YYYY-MM-DD' o null si los parámetros son inválidos.
+ * Suma N días desde fecha_base. NO omite feriados: solo omite
+ * sábados y domingos cuando incluyeFDS=false.
  */
 export function calcularFechaExtendida(
   fechaBase: string,
@@ -185,10 +224,7 @@ export function calcularFechaExtendida(
     iteraciones++;
     fecha = new Date(fecha.getTime() + 24 * 60 * 60 * 1000);
     const dia = fecha.getDay();
-    // Si NO incluye FDS: saltar sábado (6) y domingo (0)
     if (!incluyeFDS && (dia === 0 || dia === 6)) continue;
-    // Siempre saltar feriados
-    if (esFeriado(fecha)) continue;
     contados++;
   }
 

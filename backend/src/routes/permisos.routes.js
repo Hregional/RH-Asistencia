@@ -8,6 +8,10 @@ const router = express.Router();
 // Solo superadmin, admin y permisos pueden crear/editar/autorizar/eliminar
 const requireGestion = requireAnyRole('superadmin', 'admin', 'permisos');
 
+// Longitud máxima del campo observaciones (columna TEXT; límite de negocio)
+const MAX_OBSERVACIONES = 1000;
+const observacionesExcedidas = (obs) => typeof obs === 'string' && obs.length > MAX_OBSERVACIONES;
+
 // MODELO - Tipos de Permiso
 
 class TiposPermisoModel {
@@ -164,6 +168,7 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado = 'PENDIENTE',
+      observaciones = null,
       creado_por,
       firmas_config = null,
       dias_adicionales = null,
@@ -175,10 +180,10 @@ class PermisosModel {
     const [result] = await db.query(`
       INSERT INTO permisos (
         empleado_id, tipo_permiso_id, tipo_permiso_otro, mensaje_otro,
-        fecha_inicio, fecha_fin, dias_solicitados, estado, creado_por,
+        fecha_inicio, fecha_fin, dias_solicitados, estado, observaciones, creado_por,
         firmas_config, dias_adicionales, motivo_extension, fecha_fin_extendida,
         incluye_fines_semana
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       empleado_id,
       tipo_permiso_id || null,
@@ -188,6 +193,7 @@ class PermisosModel {
       fecha_fin,
       dias_solicitados,
       estado,
+      observaciones || null,
       creado_por || null,
       firmas_config ? JSON.stringify(firmas_config) : null,
       dias_adicionales || null,
@@ -405,6 +411,10 @@ class PermisosController {
         return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
       }
 
+      if (observacionesExcedidas(data.observaciones)) {
+        return res.status(400).json({ success: false, error: `Las observaciones no pueden exceder ${MAX_OBSERVACIONES} caracteres` });
+      }
+
       // Verificar traslapes si se crea como AUTORIZADO
       if (data.estado === 'AUTORIZADO') {
         const traslape = await PermisosModel.hayTraslape(
@@ -434,6 +444,10 @@ class PermisosController {
     try {
       const { id } = req.params;
       const data = req.body;
+
+      if (observacionesExcedidas(data.observaciones)) {
+        return res.status(400).json({ success: false, error: `Las observaciones no pueden exceder ${MAX_OBSERVACIONES} caracteres` });
+      }
 
       const antes = await PermisosModel.getById(id);
       if (!antes) return res.status(404).json({ success: false, error: 'Permiso no encontrado' });

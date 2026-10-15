@@ -119,4 +119,34 @@ describe('permisos routes', () => {
         expect(response.body.error).toContain('se traslapa');
         expect(auditMock).not.toHaveBeenCalled();
     });
+
+    it('rechaza observaciones mayores a 1000 caracteres al crear y actualizar', async () => {
+        const app = await createApp();
+        const observaciones = 'x'.repeat(1001);
+        const base = { empleado_id: 7, fecha_inicio: '2026-10-19', fecha_fin: '2026-10-20', dias_solicitados: 2 };
+
+        const crear = await request(app).post('/permisos').send({ ...base, observaciones });
+        const actualizar = await request(app).put('/permisos/123').send({ ...base, observaciones });
+
+        expect(crear.status).toBe(400);
+        expect(actualizar.status).toBe(400);
+        expect(crear.body.error).toContain('1000');
+        expect(dbQuery).not.toHaveBeenCalled();
+    });
+
+    it('guarda las observaciones al crear un permiso', async () => {
+        dbQuery.mockResolvedValueOnce([{ insertId: 55 }]);
+        const app = await createApp();
+        const observaciones = 'Nota interna '.repeat(70).trim(); // ~900 caracteres
+
+        const response = await request(app).post('/permisos').send({
+            empleado_id: 7, fecha_inicio: '2026-10-19', fecha_fin: '2026-10-20',
+            dias_solicitados: 2, observaciones
+        });
+
+        expect(response.status).toBe(201);
+        const [sql, params] = dbQuery.mock.calls[0];
+        expect(sql).toContain('observaciones');
+        expect(params).toContain(observaciones);
+    });
 });

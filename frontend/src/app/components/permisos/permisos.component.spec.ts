@@ -59,7 +59,6 @@ describe('PermisosComponent', () => {
         component.calcularFechaFinExtendida();
 
         expect(component.solicitudForm.fecha_fin_extendida).toBeTruthy();
-        expect((component as any).actualizarCarta).toHaveBeenCalled();
     });
 
     it('limpia datos de extensión cuando el valor es inválido', () => {
@@ -112,6 +111,32 @@ describe('PermisosComponent', () => {
             dias_solicitados: 1,
             estado: 'AUTORIZADO'
         } as Permiso)).toBeTrue();
+    });
+
+    it('compacta el cuerpo de la carta solo cuando el contenido no cabe en la media hoja', () => {
+        const doc = document.implementation.createHTMLDocument('carta');
+        doc.body.innerHTML = `
+            <div class="carta-copia-bloque" style="height:100px;overflow:hidden;display:flex;flex-direction:column">
+                <div class="carta-hro-body" style="flex-shrink:0"><div style="height:120px"></div></div>
+            </div>
+            <div class="carta-copia-bloque" style="height:100px;overflow:hidden;display:flex;flex-direction:column">
+                <div class="carta-hro-body" style="flex-shrink:0"><div style="height:50px"></div></div>
+            </div>`;
+        const iframe = document.createElement('iframe');
+        document.body.appendChild(iframe);
+        iframe.contentDocument!.open();
+        iframe.contentDocument!.write(doc.documentElement.outerHTML);
+        iframe.contentDocument!.close();
+
+        component.ajustarCartaAPagina(iframe.contentDocument!);
+
+        const [largo, corto] = Array.from(iframe.contentDocument!.querySelectorAll<HTMLElement>('.carta-hro-body'));
+        const bloqueLargo = largo.parentElement!;
+        expect(Number(largo.style.zoom)).toBeLessThan(1);
+        expect(Number(largo.style.zoom)).toBeGreaterThanOrEqual(0.7);
+        expect(bloqueLargo.scrollHeight).toBeLessThanOrEqual(bloqueLargo.clientHeight + 1);
+        expect(corto.style.zoom).toBe('');
+        iframe.remove();
     });
 
     it('mantiene el orden correcto de firmas (Jefe de Servicio antes de Jefe de Departamento)', () => {

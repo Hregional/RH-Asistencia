@@ -12,19 +12,19 @@
 const FERIADOS_FIJOS = {
   '01-01': 'Año Nuevo',
   '05-01': 'Día del Trabajo',
+  '05-10': 'Día de la Madre',
+  '06-17': 'Día del Padre',
   '06-30': 'Día del Ejército',
   '09-15': 'Independencia de Guatemala',
+  '10-07': 'Fiesta Patronal Virgen del Rosario',
   '10-20': 'Revolución de Octubre',
   '11-01': 'Día de Todos los Santos',
-  '12-24': 'Nochebuena',
   '12-25': 'Navidad',
   '12-31': 'Fin de Año',
 };
 
-// Feriados que varían por año (agregar según sea necesario)
-// Formato: 'YYYY-MM-DD': 'Nombre'
+// Solo para casos especiales no recurrentes
 const FERIADOS_VARIABLES = {
-  // Ejemplo: '2025-10-20': 'Feriado especial'
 };
 
 /**

@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { EmpleadosService, Empleado, ApiResponse, Rol, Area } from "../../services/empleados.service";
+import { EmpleadosService, Empleado, ApiResponse, Rol, Area, Colegio } from "../../services/empleados.service";
 import { AreasService } from "../../services/areass.service";
 import { PermisosService } from "../../services/permisos.service";
 import { CommonModule } from '@angular/common';
@@ -27,6 +27,7 @@ export class EmpleadosComponent implements OnInit {
   empleados: Empleado[] = [];
   roles: Rol[] = [];
   areas: Area[] = [];
+  colegios: Colegio[] = [];
   loading = false;
   error: string | null = null;
 
@@ -62,12 +63,28 @@ export class EmpleadosComponent implements OnInit {
   newRol = { nombre_rol: '', descripcion: '' };
 
   // errores de servidor por campo
-  serverErrors = {
-    numeroDuplicado: false,
-    nombreDuplicado: false,
-    emailDuplicado: false,
-    dpiDuplicado: false
-  };
+  serverErrors = this.sinErroresServidor();
+
+  private sinErroresServidor() {
+    return {
+      numeroDuplicado: false,
+      nombreDuplicado: false,
+      emailDuplicado: false,
+      dpiDuplicado: false,
+      // Mensajes del backend (incluyen a quién pertenece el valor duplicado)
+      codigo: '',
+      colegiado: ''
+    };
+  }
+
+  /** Colegio y número de colegiado deben ingresarse juntos */
+  get colegiadoIncompleto(): 'colegio' | 'numero' | null {
+    const colegio = this.empleadofrorm.colegio_id;
+    const numero = (this.empleadofrorm.numero_colegiado || '').trim();
+    if (colegio && !numero) return 'numero';
+    if (!colegio && numero) return 'colegio';
+    return null;
+  }
 
   // Estado de validación DPI en tiempo real
   dpiEstado: 'vacio' | 'invalido' | 'valido' = 'vacio';
@@ -131,11 +148,13 @@ export class EmpleadosComponent implements OnInit {
 
       return [
         e.numero_empleado,
+        e.codigo_expediente,
+        e.numero_colegiado,
         e.nombre_completo,
         rol,
         area,
         estado,
-      ].some(v => this.norm(String(v)).includes(t));
+      ].some(v => v != null && this.norm(String(v)).includes(t));
     });
   }
 
@@ -161,11 +180,20 @@ export class EmpleadosComponent implements OnInit {
     return this.areasById.get(Number(id)) ?? 'Sin asignar';
   }
 
+  /** "Col. 12345 · Médicos" para la tabla; vacío si no tiene colegiado */
+  getColegiadoLabel(emp: Empleado): string {
+    if (!emp.numero_colegiado) return '';
+    const colegio = emp.colegio_siglas || emp.colegio_nombre
+      || this.colegios.find(c => c.id === Number(emp.colegio_id))?.siglas || '';
+    return `Col. ${emp.numero_colegiado}${colegio ? ' · ' + colegio : ''}`;
+  }
+
   async ngOnInit() {
     await this.loadUserInfoAndRoles();
     this.loadEmpleados();
     this.loadRoles();
     this.loadAreas();
+    this.loadColegios();
   }
 
   private async loadUserInfoAndRoles() {
@@ -222,6 +250,15 @@ export class EmpleadosComponent implements OnInit {
         }
       },
       error: (err) => console.error('Error cargando áreas:', err)
+    });
+  }
+
+  loadColegios() {
+    this.empleadosService.getColegios().subscribe({
+      next: (resp) => {
+        if (resp.success && resp.data) this.colegios = resp.data;
+      },
+      error: (err) => console.error('Error cargando colegios:', err)
     });
   }
 
@@ -389,15 +426,18 @@ export class EmpleadosComponent implements OnInit {
   showCreateForm() {
     this.showForm = true;
     this.editingEmpleado = null;
-    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.serverErrors = this.sinErroresServidor();
     this.supervision = 'NINGUNO';
     this.dpiEstado = 'vacio';
 
     this.empleadofrorm = {
       numero_empleado: '',
+      codigo_expediente: '',
       nombre_completo: '',
       dpi: '',
       email: '',
+      colegio_id: null,
+      numero_colegiado: '',
       rol_id: 1,
       area_id: null,
       activo: true,
@@ -408,7 +448,7 @@ export class EmpleadosComponent implements OnInit {
   showEditForm(empleado: Empleado) {
     this.showForm = true;
     this.editingEmpleado = empleado;
-    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.serverErrors = this.sinErroresServidor();
     this.empleadofrorm = { ...empleado };
     this.supervision = 'NINGUNO';
     // Evaluar DPI existente al abrir edición
@@ -419,7 +459,7 @@ export class EmpleadosComponent implements OnInit {
   cancelForm() {
     this.showForm = false;
     this.editingEmpleado = null;
-    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.serverErrors = this.sinErroresServidor();
     this.dpiEstado = 'vacio';
   }
 
@@ -446,6 +486,27 @@ export class EmpleadosComponent implements OnInit {
     } else {
       this.dpiEstado = 'invalido'; // incompleto
     }
+  }
+
+  onCodigoInput(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    // Mayúsculas; solo letras, números y guiones (ej. EXP-0452)
+    const sanitized = (input.value || '').toUpperCase().replace(/[^A-Z0-9-]+/g, '').substring(0, 20);
+    input.value = sanitized;
+    this.empleadofrorm.codigo_expediente = sanitized;
+    this.serverErrors.codigo = '';
+  }
+
+  onColegiadoInput(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const sanitized = (input.value || '').replace(/\D+/g, '').substring(0, 20);
+    input.value = sanitized;
+    this.empleadofrorm.numero_colegiado = sanitized;
+    this.serverErrors.colegiado = '';
+  }
+
+  onColegioChange() {
+    this.serverErrors.colegiado = '';
   }
 
   onNombreInput(ev: Event) {
@@ -489,10 +550,15 @@ export class EmpleadosComponent implements OnInit {
       this.error = 'El DPI ingresado no es válido.';
       return;
     }
+    // Colegio y número de colegiado van juntos (el error se muestra junto al campo)
+    if (this.colegiadoIncompleto) {
+      form?.control.markAllAsTouched();
+      return;
+    }
 
     this.loading = true;
     this.error = null;
-    this.serverErrors = { numeroDuplicado: false, nombreDuplicado: false, emailDuplicado: false, dpiDuplicado: false };
+    this.serverErrors = this.sinErroresServidor();
 
     try {
       // 1) Guardar empleado
@@ -542,7 +608,11 @@ export class EmpleadosComponent implements OnInit {
       if (err?.status === 409) {
         const field = (err.error?.field || '').toString().toLowerCase();
         const msg = (err.error?.error || '').toLowerCase();
-        if (field === 'numero_empleado' || msg.includes('número de empleado') || msg.includes('numero de empleado')) {
+        if (field === 'codigo_expediente') {
+          this.serverErrors.codigo = err.error?.error || 'El código de expediente ya está asignado.';
+        } else if (field === 'numero_colegiado') {
+          this.serverErrors.colegiado = err.error?.error || 'El número de colegiado ya está registrado en ese colegio.';
+        } else if (field === 'numero_empleado' || msg.includes('número de empleado') || msg.includes('numero de empleado')) {
           this.serverErrors.numeroDuplicado = true;
         } else if (field === 'dpi' || msg.includes('dpi')) {
           this.serverErrors.dpiDuplicado = true;
@@ -557,6 +627,10 @@ export class EmpleadosComponent implements OnInit {
         const field = (err.error?.field || '').toString().toLowerCase();
         if (field === 'dpi') {
           this.error = err.error?.error || 'DPI inválido';
+        } else if (field === 'codigo_expediente') {
+          this.serverErrors.codigo = err.error?.error || 'Código de expediente inválido';
+        } else if (field === 'numero_colegiado' || field === 'colegio_id') {
+          this.serverErrors.colegiado = err.error?.error || 'Datos de colegiado inválidos';
         } else {
           this.error = err.error?.error || 'Datos inválidos';
         }
