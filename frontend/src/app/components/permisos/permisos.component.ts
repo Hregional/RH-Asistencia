@@ -6,10 +6,9 @@ import { PermisosService, Permiso, TipoPermiso } from '../../services/permisos.s
 import { EmpleadosService, Empleado, Rol, Area } from '../../services/empleados.service';
 import { numeroALetras } from '../../utils/number-to-words';
 import {
-  esFeriado,
   parseFechaLocal,
-  calcularDiasHabilesGT, calcularDiasConFDS, calcularFechaExtendida,
-  feriadosEnRango, finesDeSemanaEnRango
+  calcularDiasPermiso, calcularFechaExtendida,
+  finesDeSemanaEnRango, getFeriadosDelMes
 } from '../../utils/feriados';
 import { PermisoCartaComponent } from './permiso-carta.component';
 import { PermisosFormComponent } from './permisos-form.component';
@@ -57,18 +56,55 @@ export class PermisosComponent implements OnInit {
 
   // Firmas visibles en la carta (todas activas por defecto)
   firmas = {
-    empleado:     true,
+    empleado: true,
     jefeServicio: true,
-    jefeDepto:    true,
+    jefeDepto: true,
     jefePersonal: true,
-    direccion:    true,
-    oficioRH:     true
+    direccion: true,
+    oficioRH: true
   };
 
   // Extensión de días adicionales
   tieneExtension = false;
   // Fines de semana como días hábiles
   incluyeFinesDeSemana = false;
+
+  // Modal Calendario con puntos de color
+  mostrarCalendarioModal = false;
+  calYear = new Date().getFullYear();
+  calMonth = new Date().getMonth();
+  calModoSeleccion: 'inicio' | 'fin' = 'inicio';
+  nombresMeses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  // Siempre muestra año anterior, actual y siguiente — se actualiza automáticamente
+  get anosDisponibles(): number[] {
+    const hoy = new Date().getFullYear();
+    return [hoy - 1, hoy, hoy + 1];
+  }
+
+  // Cache de celdas del calendario para evitar recalcular en cada ciclo de detección de cambios
+  calCeldasCache: Array<{
+    dia: number | null;
+    iso?: string;
+    esFinSemana?: boolean;
+    feriado?: { nombre: string; esCondicional?: boolean } | null;
+    esInicio?: boolean;
+    esFin?: boolean;
+    enRango?: boolean;
+    esHoy?: boolean;
+  }> = [];
+
+  fmtFechaDisplay(iso: string | undefined): string {
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  irAHoy() {
+    const hoy = new Date();
+    this.calYear = hoy.getFullYear();
+    this.calMonth = hoy.getMonth();
+    this.actualizarCalendarioCache();
+  }
 
   // Flag para impresión directa desde tabla
   imprimiendoDesdeTabla = false;
@@ -101,6 +137,13 @@ export class PermisosComponent implements OnInit {
 
   // Fecha mínima = hoy
   readonly hoy = new Date().toISOString().substring(0, 10);
+
+  // Límites de texto. La descripción se imprime en la carta (media hoja carta),
+  // por eso es acotada; las observaciones son de uso interno y no se imprimen.
+  readonly MAX_DESCRIPCION = 400;
+  readonly MAX_MOTIVO_EXTENSION = 95;
+  readonly MAX_OBSERVACIONES = 1000;
+
 
   /** True cuando el tipo seleccionado tiene límite de 1 día */
   get esDiaUnico(): boolean {
@@ -176,7 +219,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: '',
       diasSolicitados: 0,
       diasEnLetras: '',
-      feriadosIncluidos: [] as string[],
       finesDeSemanaCont: 0,
       creadoPor: '',
       autorizadoPor: '',
@@ -285,10 +327,10 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // CÁLCULO FECHA FIN EXTENDIDA SIN CONSIDERAR FINES DE SEM Y TAMPOCO FERIADOS ESTABLECIDOS
+  // CÁLCULO FECHA FIN EXTENDIDA — no descuenta feriados (se ajustan manualmente)
   /** Suma N días hábiles desde una fecha dada (máx 30 días adicionales, límite de 500 iteraciones) */
   calcularFechaFinExtendida(): void {
-    const dias      = this.solicitudForm.dias_adicionales;
+    const dias = this.solicitudForm.dias_adicionales;
     const fechaBase = this.solicitudForm.fecha_fin;
 
     const resultado = calcularFechaExtendida(
@@ -297,36 +339,28 @@ export class PermisosComponent implements OnInit {
       this.incluyeFinesDeSemana
     );
     this.solicitudForm.fecha_fin_extendida = resultado;
-    this.actualizarCarta();
   }
 
   onDiasAdicionalesChange(valor: any): void {
     const dias = Number(valor);
-    // Si está vacío, cero o inválido, limpiar — no forzar a 1
     if (!valor || isNaN(dias) || dias <= 0) {
       this.solicitudForm.dias_adicionales = null;
       this.solicitudForm.fecha_fin_extendida = null;
-      this.actualizarCarta();
+      this.calcularDias();
       return;
     }
     const clamped = Math.min(Math.max(Math.floor(dias), 1), 30);
     this.solicitudForm.dias_adicionales = clamped;
-    this.calcularFechaFinExtendida();
+    this.calcularDias();
   }
 
   onToggleExtension(valor: boolean): void {
-    // tieneExtension ya fue actualizado por ngModel
     if (!valor) {
       this.solicitudForm.dias_adicionales = null;
       this.solicitudForm.motivo_extension = null;
       this.solicitudForm.fecha_fin_extendida = null;
-      this.actualizarCarta();
-    } else {
-      // Si ya hay días ingresados y fecha_fin, recalcular al activar
-      if (this.solicitudForm.dias_adicionales && this.solicitudForm.fecha_fin) {
-        this.calcularFechaFinExtendida();
-      }
     }
+    this.calcularDias();
   }
 
   toggleExtension(): void {
@@ -335,8 +369,12 @@ export class PermisosComponent implements OnInit {
       this.solicitudForm.dias_adicionales = null;
       this.solicitudForm.motivo_extension = null;
       this.solicitudForm.fecha_fin_extendida = null;
-      this.actualizarCarta();
     }
+    this.calcularDias();
+  }
+
+  onToggleFinesDeSemana(): void {
+    this.calcularDias();
   }
 
   // ─── NAVEGACIÓN ───────────────────────────────────────────────────
@@ -345,12 +383,12 @@ export class PermisosComponent implements OnInit {
     if (cfg) {
       const parsed = typeof cfg === 'string' ? JSON.parse(cfg) : cfg;
       this.firmas = {
-        empleado:     parsed.empleado     ?? true,
+        empleado: parsed.empleado ?? true,
         jefeServicio: parsed.jefeServicio ?? true,
-        jefeDepto:    parsed.jefeDepto    ?? true,
+        jefeDepto: parsed.jefeDepto ?? true,
         jefePersonal: parsed.jefePersonal ?? true,
-        direccion:    parsed.direccion    ?? true,
-        oficioRH:     parsed.oficioRH     ?? true
+        direccion: parsed.direccion ?? true,
+        oficioRH: parsed.oficioRH ?? true
       };
     } else {
       this.firmas = { empleado: true, jefeServicio: true, jefeDepto: true, jefePersonal: true, direccion: true, oficioRH: true };
@@ -405,14 +443,10 @@ export class PermisosComponent implements OnInit {
     this.empleadoBusqueda = permiso.nombre_completo || '';
     this.diasExcedidos = false;
     if (this.solicitudForm.fecha_inicio && this.solicitudForm.fecha_fin) {
-      this.solicitudForm.dias_solicitados = calcularDiasHabilesGT(
-        parseFechaLocal(this.solicitudForm.fecha_inicio),
-        parseFechaLocal(this.solicitudForm.fecha_fin)
-      );
-      const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
-      this.diasExcedidos = !!(tipo && this.solicitudForm.dias_solicitados > tipo.dias_permitidos);
+      this.calcularDias();
+    } else {
+      this.actualizarCarta();
     }
-    this.actualizarCarta();
   }
 
   irATiposPermiso() {
@@ -461,11 +495,25 @@ export class PermisosComponent implements OnInit {
     this.actualizarCarta();
   }
 
-  // ─── CÁLCULO DE DÍAS HÁBILES (calendario GT)
+  // ─── CÁLCULO DE DÍAS (no descuenta feriados; solo fines de semana según toggle)
   calcularDias() {
     // Si es permiso de 1 día, forzar fecha_fin = fecha_inicio antes de validar
     if (this.esDiaUnico && this.solicitudForm.fecha_inicio) {
       this.solicitudForm.fecha_fin = this.solicitudForm.fecha_inicio;
+    }
+
+    if (!this.solicitudForm.fecha_inicio || !this.solicitudForm.fecha_fin) {
+      this.solicitudForm.dias_solicitados = 0;
+      this.actualizarCarta();
+      return;
+    }
+
+    const inicio = parseFechaLocal(this.solicitudForm.fecha_inicio);
+    const finOriginal = parseFechaLocal(this.solicitudForm.fecha_fin);
+
+    // Si hay extensión, recalcular la fecha fin extendida primero
+    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.fecha_fin) {
+      this.calcularFechaFinExtendida();
     }
 
     // Validar fines de semana solo si el toggle FDS está desactivado
@@ -494,28 +542,17 @@ export class PermisosComponent implements OnInit {
       }
     }
 
-    if (!this.solicitudForm.fecha_inicio || !this.solicitudForm.fecha_fin) {
-      this.solicitudForm.dias_solicitados = 0;
-      this.actualizarCarta();
-      return;
-    }
-    const inicio = parseFechaLocal(this.solicitudForm.fecha_inicio);
-    const fin    = parseFechaLocal(this.solicitudForm.fecha_fin);
-
-    // Usar la función correcta según el toggle
-    this.solicitudForm.dias_solicitados = this.incluyeFinesDeSemana
-      ? calcularDiasConFDS(inicio, fin)
-      : calcularDiasHabilesGT(inicio, fin);
+    // Días base: sin descontar feriados; los FDS cuentan solo si el toggle está activo
+    this.solicitudForm.dias_solicitados = calcularDiasPermiso(inicio, finOriginal, this.incluyeFinesDeSemana);
 
     // Validar límite del tipo de permiso
     const tipo = this.tiposPermiso.find(t => t.id === this.solicitudForm.tipo_permiso_id);
     this.diasExcedidos = !!(tipo && this.solicitudForm.dias_solicitados > tipo.dias_permitidos);
 
-    // Si hay extensión activa y hay días ingresados, recalcular fecha fin extendida
-    if (this.tieneExtension && this.solicitudForm.dias_adicionales && this.solicitudForm.dias_adicionales > 0) {
-      this.calcularFechaFinExtendida();
-    } else {
-      this.actualizarCarta();
+    this.actualizarCarta();
+    // Solo actualizar cache del calendario si el modal está abierto
+    if (this.mostrarCalendarioModal) {
+      this.actualizarCalendarioCache();
     }
   }
 
@@ -537,12 +574,10 @@ export class PermisosComponent implements OnInit {
     const areaNombre = emp ? (this.areas.find(a => a.id === emp.area_id)?.nombre || '') : '';
     const dias = this.solicitudForm.dias_solicitados || 0;
 
-    const feriados = (this.solicitudForm.fecha_inicio && this.solicitudForm.fecha_fin)
-      ? feriadosEnRango(parseFechaLocal(this.solicitudForm.fecha_inicio), parseFechaLocal(this.solicitudForm.fecha_fin))
-      : [];
+    const fechaFinEfectiva = this.solicitudForm.fecha_fin_extendida || this.solicitudForm.fecha_fin;
 
-    const finesSemana = (this.solicitudForm.fecha_inicio && this.solicitudForm.fecha_fin)
-      ? finesDeSemanaEnRango(parseFechaLocal(this.solicitudForm.fecha_inicio), parseFechaLocal(this.solicitudForm.fecha_fin))
+    const finesSemana = (this.solicitudForm.fecha_inicio && fechaFinEfectiva)
+      ? finesDeSemanaEnRango(parseFechaLocal(this.solicitudForm.fecha_inicio), parseFechaLocal(fechaFinEfectiva))
       : 0;
 
     this.cartaData = {
@@ -563,7 +598,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: fmtFecha(this.solicitudForm.fecha_fin || ''),
       diasSolicitados: dias,
       diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
-      feriadosIncluidos: feriados,
       finesDeSemanaCont: finesSemana,
       creadoPor: this.usuarioActual,
       autorizadoPor: '',
@@ -863,9 +897,8 @@ export class PermisosComponent implements OnInit {
     });
   }
 
-  // ─── IMPRIMIR 
+  // ─── IMPRIMIR
   imprimirCarta() {
-    // Buscar la carta dentro del contenedor oculto de impresión
     const contenedor = document.querySelector('[data-print-container]');
     const cartaEl = contenedor
       ? contenedor.querySelector('.carta-hoja')
@@ -873,8 +906,13 @@ export class PermisosComponent implements OnInit {
 
     if (!cartaEl) { window.print(); return; }
 
-    const win = window.open('', '_blank', 'width=816,height=1056');
+    const win = window.open('', '_blank', 'width=850,height=1100');
     if (!win) { window.print(); return; }
+
+    // Tomar UNA SOLA copia del DOM y duplicarla en JS
+    const copias = cartaEl.querySelectorAll('.carta-copia-bloque');
+    const primeraCopia = copias[0]?.outerHTML || '';
+    const segundaCopia = copias[1]?.outerHTML || copias[0]?.outerHTML || '';
 
     const estilos = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map(el => el.outerHTML).join('\n');
@@ -885,59 +923,100 @@ export class PermisosComponent implements OnInit {
   <meta charset="utf-8">
   ${estilos}
   <style>
-    @page {
-      size: letter portrait;
-      margin: 10mm 15mm;
-      margin-top: 0mm;
-      margin-bottom: 0mm;
+    @page { size: letter portrait; margin: 0; }
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif !important; }
+    head { display:none !important; }
+    html,body { margin:0; padding:0; background:#fff !important; height:100vh !important; max-height:100vh !important; overflow:hidden !important; }
+    body { font-size:10.5pt; color:#000; line-height:1.4; }
+    .carta-wrapper { width:100%; height:100vh; max-height:100vh; padding:4mm 10mm; display:flex; flex-direction:column; box-sizing:border-box; overflow:hidden; page-break-inside:avoid; break-inside:avoid; }
+    .carta-copia-bloque {
+      flex:1 1 0;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      padding:1mm 0;
+      overflow:hidden;
+      page-break-inside:avoid;
+      break-inside:avoid;
     }
-    @page :first { margin-top: 0; }
-    @page :left { margin-left: 10mm; }
-    @page :right { margin-right: 10mm; }
-    head { display: none !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; background: #fff !important; }
-    html { background: #fff !important; }
-    .carta-hoja { width: 100%; height: 100vh; display: flex; flex-direction: column; border: none; margin: 0; max-width: 100%; font-size: 10pt; line-height: 1.4; color: #111; overflow: hidden; }
-    .carta-copia-bloque { flex: 1 1 0; min-height: 0; padding: 3mm 0; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
-    .carta-copia-bloque + .carta-copia-bloque { border-top: 1px dashed #ccc; margin-top: 2mm; padding-top: 3mm; }
-    .carta-hro-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }
-    .carta-hro-logo-left { display:flex; align-items:flex-start; }
-    .carta-logo-img { height:50px; width:auto; object-fit:contain; }
-    .carta-hro-logo-right { text-align:right; }
-    .carta-hro-inst-right { font-size:7pt; line-height:1.5; text-align:right; color:#111; }
-    .carta-hro-fecha-line { font-size:8.5pt; margin-bottom:5px; border-bottom:1px solid #000; padding-bottom:3px; display:flex; gap:5px; align-items:baseline; flex-wrap:wrap; }
-    .fecha-campo { border-bottom:1px solid #000; min-width:50px; display:inline-block; text-align:center; padding:0 3px; }
-    .fecha-mes { min-width:80px; }
-    .carta-hro-destinatario { margin-bottom:6px; font-size:9pt; line-height:1.4; }
-    .carta-hro-body { margin-bottom:4px; flex:1; }
-    .carta-hro-body p { font-size:9pt; margin:0 0 4px; }
-    .carta-underline { border-bottom:1px solid #000; padding-bottom:1px; }
-    .carta-mensaje { font-size:8.5pt; text-transform:uppercase; }
-    .carta-feriados { font-size:8pt; font-style:italic; text-transform:uppercase; margin:1px 0 3px !important; }
-    .carta-fechas-row { display:flex; gap:20px; margin:4px 0; font-size:12pt; }
-    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:2px 0; margin:4px 0; font-size:8.5pt; }
-    .carta-atentamente { font-size:9pt; margin-top:4px !important; margin-bottom:30pt !important; }
-    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-between !important; margin-top:0; gap:6px; width:100%; }
-    .firma-bloque { flex:1 1 0 !important; min-width:0 !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; gap:1px; font-size:7.5pt; }
-    .firma-linea { width:100% !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
-    .firma-label { font-weight:600; font-size:7pt; text-transform:uppercase; display:block !important; }
-    .firma-sub { font-size:6.5pt; color:#333; display:block !important; }
-    .dias-autorizacion { font-size:9pt; }
-    .carta-solicitud-line { margin-bottom:3px !important; }
-    .carta-tipo-permiso { margin-bottom:3px !important; }
-    .carta-meta-impresion { display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px; font-size:7pt; color:#555; border-top:1px solid #ccc; margin-top:4px; padding-top:3px; }
+    .carta-copia-bloque + .carta-copia-bloque {
+      border-top:1.5px dashed #555;
+      padding-top:5mm;
+      margin-top:3mm;
+      page-break-before:avoid;
+      break-before:avoid;
+    }
+    .carta-hro-header { display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:5px; }
+    .carta-logo-img { height:44px; width:auto; object-fit:contain; }
+    .carta-hro-inst-right { font-size:7.5pt; line-height:1.35; text-align:right; color:#000; }
+    .carta-meta-impresion { display:flex; justify-content:space-between; font-size:7.5pt; color:#444; margin-bottom:4px; }
+    .carta-hro-fecha-line { font-size:10.5pt; margin-bottom:5px; display:flex; gap:4px; align-items:baseline; flex-wrap:wrap; justify-content:center; }
+    .fecha-campo { min-width:46px; display:inline-block; text-align:center; padding:0 4px; font-weight:600; border-bottom:1px solid #000; }
+    .fecha-mes { min-width:70px; }
+    .carta-hro-destinatario { margin-bottom:5px; font-size:10.5pt; display:flex; gap:4px; flex-wrap:wrap; }
+    .carta-hro-body p { font-size:10.5pt; margin:0 0 4px; line-height:1.4; }
+    .carta-underline { border-bottom:1px solid #000; }
+    .carta-solicitud-line,.carta-tipo-permiso { margin-bottom:4px !important; }
+    .carta-mensaje { font-size:10pt; margin:3px 0 !important; }
+    .carta-feriados { font-size:8.5pt; font-style:italic; margin:2px 0 !important; color:#333; }
+    .dias-autorizacion { font-weight:700; }
+    .carta-fechas-row { display:block; margin:4px 0; font-size:10.5pt; text-align:center; }
+    .carta-sujeto { text-align:center; border-top:1px solid #000; border-bottom:1px solid #000; padding:3px 0; margin:5px 0; font-size:9pt; font-weight:700; text-transform:uppercase; }
+    .carta-atentamente { font-size:10.5pt; margin:4px 0 10mm !important; flex-shrink:0; }
+    .firma-spacer { display:none; }
+    .carta-hro-firmas-wrapper { display:flex; flex-direction:column; gap:10mm; width:100%; flex-shrink:0; }
+    .carta-hro-firmas { display:flex !important; flex-direction:row !important; justify-content:space-around !important; gap:16px; width:100%; }
+    .firmas-n2 .carta-hro-firmas { justify-content:space-around !important; }
+    .firmas-n4 .fila-1 { justify-content:center !important; gap:24px !important; }
+    .firmas-n4 .fila-2 { justify-content:space-between !important; }
+    .firma-bloque { flex:0 0 45mm !important; max-width:45mm !important; text-align:center !important; display:flex !important; flex-direction:column !important; align-items:center !important; }
+    .firma-bloque strong { font-size:7.5pt !important; font-weight:600 !important; text-transform:uppercase !important; display:block !important; line-height:1.2 !important; margin-bottom:1px !important; }
+    .firma-linea { width:45mm !important; max-width:45mm !important; border-top:1px solid #000 !important; margin-bottom:2px; display:block !important; }
+    .firma-label { font-weight:700; font-size:7.5pt; text-transform:uppercase; display:block !important; line-height:1.25; }
+    .firma-sub { font-size:7pt; color:#444; display:block !important; }
+    .carta-hro-logo-right img { display:block !important; }
   </style>
 </head>
-<body>${cartaEl.outerHTML}</body>
+<body>
+  <div class="carta-wrapper">
+    ${primeraCopia}
+    ${segundaCopia}
+  </div>
+</body>
 </html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 500);
+    setTimeout(() => {
+      this.ajustarCartaAPagina(win.document);
+      win.print();
+      win.close();
+    }, 500);
+  }
+
+  /**
+   * Cada copia ocupa media hoja con overflow oculto. Si el contenido (descripción larga,
+   * extensión, nota de FDS, 6 firmas) no cabe, reduce proporcionalmente solo el cuerpo
+   * del texto para que las firmas nunca queden cortadas. Mínimo 70%.
+   */
+  ajustarCartaAPagina(doc: Document): void {
+    doc.querySelectorAll<HTMLElement>('.carta-copia-bloque').forEach(bloque => {
+      const cuerpo = bloque.querySelector<HTMLElement>('.carta-hro-body');
+      if (!cuerpo) return;
+      let zoom = 1;
+      cuerpo.style.removeProperty('zoom');
+      while (bloque.scrollHeight > bloque.clientHeight + 1 && zoom > 0.7) {
+        zoom = Math.round((zoom - 0.02) * 100) / 100;
+        cuerpo.style.setProperty('zoom', String(zoom));
+      }
+    });
   }
 
   // ─── IMPRIMIR DESDE TABLA 
   imprimirPermisoDirecto(permiso: Permiso) {
+    if (!this.editingPermiso || this.editingPermiso.id !== permiso.id) {
+      this.resetFirmas(permiso);
+    }
     const emp = this.empleados.find(e => e.id === permiso.empleado_id);
     const rolNombre = emp ? (this.roles.find(r => r.id === emp.rol_id)?.nombre || '') : '';
     const areaNombre = emp ? (this.areas.find(a => a.id === emp.area_id)?.nombre || '') : '';
@@ -946,7 +1025,6 @@ export class PermisosComponent implements OnInit {
     const fmtFecha = (iso: string) => { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
     const inicio = permiso.fecha_inicio ? parseFechaLocal(permiso.fecha_inicio.substring(0, 10)) : null;
     const fin = permiso.fecha_fin ? parseFechaLocal(permiso.fecha_fin.substring(0, 10)) : null;
-    const feriados = inicio && fin ? feriadosEnRango(inicio, fin) : [];
     const finesSemana = inicio && fin ? finesDeSemanaEnRango(inicio, fin) : 0;
     const dias = permiso.dias_solicitados || 0;
 
@@ -985,7 +1063,6 @@ export class PermisosComponent implements OnInit {
       fechaFin: fmtFecha(permiso.fecha_fin?.substring(0, 10) || ''),
       diasSolicitados: dias,
       diasEnLetras: dias > 0 ? numeroALetras(dias) : '',
-      feriadosIncluidos: feriados,
       finesDeSemanaCont: finesSemana,
       creadoPor: (permiso as any).creado_por_usuario || '',
       autorizadoPor: (permiso as any).autorizado_por_usuario || '',
@@ -1033,21 +1110,32 @@ export class PermisosComponent implements OnInit {
   private calcularFirmasFilas(): void {
     type FirmaKey = keyof typeof this.firmas;
     const todas: Array<{ key: FirmaKey; label: string; sub?: string }> = [
-      { key: 'empleado',     label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
+      { key: 'empleado', label: this.cartaData.rol ? this.cartaData.rol.toUpperCase() : '', sub: 'Empleado' },
       { key: 'jefeServicio', label: 'JEFE DE SERVICIO' },
-      { key: 'jefeDepto',    label: 'JEFE DE DEPARTAMENTO' },
+      { key: 'jefeDepto', label: 'JEFE DE DEPARTAMENTO' },
       { key: 'jefePersonal', label: 'JEFE DE PERSONAL' },
-      { key: 'direccion',    label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
-      { key: 'oficioRH',     label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
+      { key: 'direccion', label: 'DIRECCIÓN EJECUTIVA', sub: 'Y/O SUBDIRECCIÓN' },
+      { key: 'oficioRH', label: 'OFICINA DE RECURSOS HUMANOS', sub: 'Firma y Sello' }
     ];
     const activas = todas.filter(f => this.firmas[f.key as FirmaKey]);
     const n = activas.length;
-    if (n <= 4) {
+    if (n <= 1) {
       this.firmasFilas = [activas];
+    } else if (n === 2) {
+      // 2 firmas: 1 fila, separadas a los lados
+      this.firmasFilas = [activas];
+    } else if (n === 3) {
+      // 3 firmas: 1 arriba centrada + 2 abajo
+      this.firmasFilas = [[activas[0]], activas.slice(1)];
+    } else if (n === 4) {
+      // 4 firmas: 2 + 2 bien distribuidas
+      this.firmasFilas = [activas.slice(0, 2), activas.slice(2)];
     } else if (n === 5) {
+      // 5 firmas: 3 + 2
       this.firmasFilas = [activas.slice(0, 3), activas.slice(3)];
     } else {
-      this.firmasFilas = [activas.slice(0, 3), activas.slice(3)]; // 6 → 3+3
+      // 6 firmas: 3 + 3
+      this.firmasFilas = [activas.slice(0, 3), activas.slice(3)];
     }
   }
 
@@ -1057,8 +1145,12 @@ export class PermisosComponent implements OnInit {
     const [d, m, y] = fechaDDMMYYYY.split('/');
     const fecha = new Date(`${y}-${m}-${d}T00:00:00`);
     if (isNaN(fecha.getTime())) return '';
-    const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     return dias[fecha.getDay()];
+  }
+
+  get totalFirmasActivas(): number {
+    return this.firmasFilas.reduce((a, f) => a + f.length, 0);
   }
 
   getEstadoClass(estado: string, permiso?: Permiso): string {
@@ -1109,5 +1201,134 @@ export class PermisosComponent implements OnInit {
       // Overlap: S1 <= E2 AND S2 <= E1
       return newS <= oldE && oldS <= newE;
     });
+  }
+
+  // ─── MÉTODOS DEL CALENDARIO CON PUNTOS DE COLOR ─────────────────────
+  abrirCalendario(modo: 'inicio' | 'fin') {
+    this.calModoSeleccion = modo;
+    const refIso = modo === 'inicio' ? this.solicitudForm.fecha_inicio : (this.solicitudForm.fecha_fin || this.solicitudForm.fecha_inicio);
+    if (refIso && refIso.length >= 7) {
+      const [y, m] = refIso.split('-').map(Number);
+      if (!isNaN(y) && !isNaN(m)) {
+        this.calYear = y;
+        this.calMonth = m - 1;
+      }
+    } else {
+      const hoy = new Date();
+      this.calYear = hoy.getFullYear();
+      this.calMonth = hoy.getMonth();
+    }
+    this.actualizarCalendarioCache();
+    this.mostrarCalendarioModal = true;
+  }
+
+  cerrarCalendario() {
+    this.mostrarCalendarioModal = false;
+  }
+
+  calMesAnterior() {
+    if (this.calMonth === 0) {
+      this.calMonth = 11;
+      this.calYear--;
+    } else {
+      this.calMonth--;
+    }
+    this.actualizarCalendarioCache();
+  }
+
+  calMesSiguiente() {
+    if (this.calMonth === 11) {
+      this.calMonth = 0;
+      this.calYear++;
+    } else {
+      this.calMonth++;
+    }
+    this.actualizarCalendarioCache();
+  }
+
+  /** Llamar cuando cambia el año o mes desde los selects del calendario */
+  onCalNavChange() {
+    this.actualizarCalendarioCache();
+  }
+
+  seleccionarDiaCalendario(dia: number | null) {
+    if (!dia) return;
+    const m = String(this.calMonth + 1).padStart(2, '0');
+    const d = String(dia).padStart(2, '0');
+    const iso = `${this.calYear}-${m}-${d}`;
+
+    if (this.calModoSeleccion === 'inicio') {
+      this.solicitudForm.fecha_inicio = iso;
+      if (this.esDiaUnico) {
+        this.solicitudForm.fecha_fin = iso;
+      }
+    } else {
+      this.solicitudForm.fecha_fin = iso;
+    }
+    this.calcularDias();
+    this.cerrarCalendario();
+  }
+
+  /** Recalcula y cachea las celdas del calendario. Llamar solo cuando cambian mes, año o fechas seleccionadas. */
+  actualizarCalendarioCache() {
+    this.calCeldasCache = this.getMatrizDiasCalendario();
+  }
+
+  private getMatrizDiasCalendario() {
+    const primerDia = new Date(this.calYear, this.calMonth, 1).getDay(); // 0=Dom
+    const totalDias = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+    // Feriados solo como referencia visual; no afectan el conteo de días
+    const feriados = getFeriadosDelMes(this.calYear, this.calMonth);
+
+    const hoy = new Date();
+    const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+    const celdas: Array<{
+      dia: number | null;
+      iso?: string;
+      esFinSemana?: boolean;
+      feriado?: { nombre: string; esCondicional?: boolean } | null;
+      esInicio?: boolean;
+      esFin?: boolean;
+      enRango?: boolean;
+      esHoy?: boolean;
+    }> = [];
+
+    for (let i = 0; i < primerDia; i++) {
+      celdas.push({ dia: null });
+    }
+
+    const isoInicio = this.solicitudForm.fecha_inicio;
+    const isoFin = this.solicitudForm.fecha_fin;
+
+    for (let dia = 1; dia <= totalDias; dia++) {
+      const m = String(this.calMonth + 1).padStart(2, '0');
+      const d = String(dia).padStart(2, '0');
+      const iso = `${this.calYear}-${m}-${d}`;
+      const fechaObj = new Date(this.calYear, this.calMonth, dia);
+      const dow = fechaObj.getDay();
+      const esFinSemana = dow === 0 || dow === 6;
+      const feriadoInfo = feriados[dia] || null;
+
+      const esInicio = iso === isoInicio;
+      const esFin = iso === isoFin;
+      let enRango = false;
+      if (isoInicio && isoFin && iso >= isoInicio && iso <= isoFin) {
+        enRango = true;
+      }
+
+      celdas.push({
+        dia,
+        iso,
+        esFinSemana,
+        feriado: feriadoInfo,
+        esInicio,
+        esFin,
+        enRango,
+        esHoy: iso === hoyIso
+      });
+    }
+
+    return celdas;
   }
 }

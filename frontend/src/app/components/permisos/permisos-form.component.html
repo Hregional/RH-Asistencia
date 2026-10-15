@@ -148,7 +148,7 @@
     <div class="form-group">
         <label>Observaciones</label>
         <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
-            maxlength="75"></textarea>
+            maxlength="1000"></textarea>
     </div>
 
     <ng-container *ngIf="empleadoSeleccionado && solicitudForm.fecha_inicio && cartaData">

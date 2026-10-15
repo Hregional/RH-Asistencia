@@ -16,7 +16,6 @@ export interface CartaData {
     fechaFin: string;
     diasSolicitados: number;
     diasEnLetras: string;
-    feriadosIncluidos: string[];
     finesDeSemanaCont: number;
     creadoPor: string;
     autorizadoPor: string;

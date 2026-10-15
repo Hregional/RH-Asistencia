@@ -71,23 +71,24 @@
             <span *ngIf="permiso.observaciones" class="obs-icon" [title]="permiso.observaciones">💬</span>
           </td>
           <td class="action-buttons">
-            <!-- Autorizar: cuando no está AUTORIZADO -->
-            <button *ngIf="permiso.estado !== 'AUTORIZADO'"
-              class="btn btn-success btn-small" title="Autorizar"
+            <!-- Autorizar: siempre visible, opacado si ya está AUTORIZADO -->
+            <button class="btn btn-success btn-small"
+              title="Autorizar"
+              [class.btn-opaco]="permiso.estado === 'AUTORIZADO'"
+              [disabled]="permiso.estado === 'AUTORIZADO'"
               (click)="cambiarEstado(permiso, 'AUTORIZADO')">✔</button>
-            <!-- Rechazar: solo cuando está AUTORIZADO -->
-            <button *ngIf="permiso.estado === 'AUTORIZADO'"
-              class="btn btn-danger btn-small" title="Rechazar"
+            <!-- Rechazar: siempre visible, opacado si ya está RECHAZADO -->
+            <button class="btn btn-danger btn-small"
+              title="Rechazar"
+              [class.btn-opaco]="permiso.estado === 'RECHAZADO'"
+              [disabled]="permiso.estado === 'RECHAZADO'"
               (click)="cambiarEstado(permiso, 'RECHAZADO')">✖</button>
             <!-- Editar: siempre -->
-            <button class="btn btn-primary btn-small" title="Editar"
-              (click)="irAEditarPermiso(permiso)">✏️</button>
+            <button class="btn btn-primary btn-small" title="Editar" (click)="irAEditarPermiso(permiso)">✏️</button>
             <!-- Imprimir: siempre disponible según estado -->
-            <button *ngIf="permiso.estado !== 'AUTORIZADO'"
-              class="btn btn-secondary btn-small" title="Imprimir"
+            <button *ngIf="permiso.estado !== 'AUTORIZADO'" class="btn btn-secondary btn-small" title="Imprimir"
               (click)="imprimirPermisoDirecto(permiso)">🖨️</button>
-            <button *ngIf="permiso.estado === 'AUTORIZADO'"
-              class="btn btn-secondary btn-small" title="Reimprimir"
+            <button *ngIf="permiso.estado === 'AUTORIZADO'" class="btn btn-secondary btn-small" title="Reimprimir"
               (click)="imprimirPermisoDirecto(permiso)">🖨️</button>
           </td>
         </tr>
@@ -151,13 +152,14 @@
       <div class="form-row">
         <div class="form-group">
           <label>Nombre del Permiso *</label>
-          <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" (input)="actualizarCarta()" maxlength="30"
+          <input type="text" [(ngModel)]="solicitudForm.tipo_permiso_otro" (input)="actualizarCarta()" maxlength="40"
             required />
         </div>
         <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="50"
+          <label>Motivo del Permiso <span class="req">*</span></label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" [maxlength]="MAX_DESCRIPCION"
             required></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -167,10 +169,12 @@
       *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1 && empleadoSeleccionado">
       <div class="form-row">
         <div class="form-group">
-          <label>Descripción adicional (Obligatorio)</label>
+          <label>Descripción adicional <span *ngIf="esVacaciones" class="req">*</span><span *ngIf="!esVacaciones"
+              class="label-hint">(opcional)</span></label>
           <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
-            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" maxlength="100"
-            style="min-height:38px;"></textarea>
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" [maxlength]="MAX_DESCRIPCION"
+            style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -178,15 +182,25 @@
     <!-- Fechas con calendarios -->
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && empleadoSeleccionado">
       <div class="form-row">
-        <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
+        <div class="form-group" [style.maxWidth]="esDiaUnico ? '240px' : ''">
           <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
-            [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
+          <div class="custom-date-field" (click)="abrirCalendario('inicio')"
+            title="Hacer clic para abrir calendario de feriados">
+            <span class="date-field-text" *ngIf="solicitudForm.fecha_inicio">{{
+              fmtFechaDisplay(solicitudForm.fecha_inicio) }}</span>
+            <span class="date-field-placeholder" *ngIf="!solicitudForm.fecha_inicio">Seleccionar fecha...</span>
+            <span class="date-field-icon">📅</span>
+          </div>
         </div>
         <div class="form-group" *ngIf="!esDiaUnico">
           <label>Fecha de Fin</label>
-          <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-            [min]="solicitudForm.fecha_inicio || ''" />
+          <div class="custom-date-field" (click)="abrirCalendario('fin')"
+            title="Hacer clic para abrir calendario de feriados">
+            <span class="date-field-text" *ngIf="solicitudForm.fecha_fin">{{ fmtFechaDisplay(solicitudForm.fecha_fin)
+              }}</span>
+            <span class="date-field-placeholder" *ngIf="!solicitudForm.fecha_fin">Seleccionar fecha...</span>
+            <span class="date-field-icon">📅</span>
+          </div>
         </div>
         <div class="form-group form-group-small">
           <label>Días hábiles</label>
@@ -205,10 +219,10 @@
           <div class="firmas-checks">
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado"
                 (change)="actualizarCarta()"> Empleado</label>
-            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
-                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto"
                 (change)="actualizarCarta()"> Jefe Depto.</label>
+            <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
+                (change)="actualizarCarta()"> Jefe Servicio</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
                 (change)="actualizarCarta()"> Jefe Personal</label>
             <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion"
@@ -227,8 +241,7 @@
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
         <label class="toggle-switch">
-          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
-            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana" (ngModelChange)="onToggleFinesDeSemana()" />
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -244,8 +257,7 @@
         <div class="form-row extension-row">
           <div class="form-group form-group-small">
             <label>Días adicionales</label>
-            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales"
-              max="30" placeholder="1-30"
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" max="30" placeholder="1-30"
               (ngModelChange)="onDiasAdicionalesChange($event)" />
           </div>
           <div class="form-group form-group-small">
@@ -257,15 +269,26 @@
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
             <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
-              placeholder="Motivo obligatorio" maxlength="50" style="min-height:38px;" required></textarea>
+              placeholder="Motivo obligatorio" [maxlength]="MAX_MOTIVO_EXTENSION" style="min-height:38px;" required></textarea>
+            <small class="char-contador">{{ (solicitudForm.motivo_extension || '').length }}/{{ MAX_MOTIVO_EXTENSION }}</small>
           </div>
         </div>
       </ng-container>
     </ng-container>
 
+    <!-- Observaciones internas (no se imprimen) -->
+    <div class="form-group" *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined">
+      <label>Observaciones <span class="label-hint">(uso interno, no se imprime)</span></label>
+      <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+        [maxlength]="MAX_OBSERVACIONES" style="min-height:76px;"></textarea>
+      <small class="char-contador">{{ (solicitudForm.observaciones || '').length }}/{{ MAX_OBSERVACIONES }}</small>
+    </div>
+
     <!-- Carta preview -->
     <ng-container *ngIf="empleadoSeleccionado && solicitudForm.tipo_permiso_id !== undefined">
-      <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+      <div data-print-container>
+        <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+      </div>
     </ng-container>
 
     <div class="form-actions">
@@ -307,9 +330,10 @@
             required>
         </div>
         <div class="form-group">
-          <label>Motivo del Permiso</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" maxlength="50" required
-            style="min-height:38px;"></textarea>
+          <label>Motivo del Permiso <span class="req">*</span></label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" [maxlength]="MAX_DESCRIPCION"
+            required style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
@@ -318,25 +342,37 @@
     <ng-container *ngIf="solicitudForm.tipo_permiso_id !== undefined && solicitudForm.tipo_permiso_id !== -1">
       <div class="form-row">
         <div class="form-group">
-          <label>Descripción adicional {{ esVacaciones ? '*' : '(Opcional)' }}</label>
-          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()" 
-            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" 
-            maxlength="100" style="min-height:38px;"></textarea>
+          <label>Descripción adicional <span *ngIf="esVacaciones" class="req">*</span><span *ngIf="!esVacaciones"
+              class="label-hint">(opcional)</span></label>
+          <textarea [(ngModel)]="solicitudForm.mensaje_otro" (input)="actualizarCarta()"
+            [placeholder]="esVacaciones ? 'Ej: del período 2024-2025' : 'Comentario adicional'" [maxlength]="MAX_DESCRIPCION"
+            style="min-height:56px;"></textarea>
+          <small class="char-contador">Se imprime en la carta · {{ (solicitudForm.mensaje_otro || '').length }}/{{ MAX_DESCRIPCION }}</small>
         </div>
       </div>
     </ng-container>
 
     <!-- Calendarios para controlar días hábiles -->
     <div class="form-row">
-      <div class="form-group" [style.maxWidth]="esDiaUnico ? '200px' : ''">
+      <div class="form-group" [style.maxWidth]="esDiaUnico ? '240px' : ''">
         <label>{{ esDiaUnico ? 'Fecha del Permiso' : 'Fecha de Inicio' }}</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_inicio" (change)="calcularDias()" required
-          [max]="esDiaUnico ? '' : (solicitudForm.fecha_fin || '')" />
+        <div class="custom-date-field" (click)="abrirCalendario('inicio')"
+          title="Hacer clic para abrir calendario de feriados">
+          <span class="date-field-text" *ngIf="solicitudForm.fecha_inicio">{{
+            fmtFechaDisplay(solicitudForm.fecha_inicio) }}</span>
+          <span class="date-field-placeholder" *ngIf="!solicitudForm.fecha_inicio">Seleccionar fecha...</span>
+          <span class="date-field-icon">📅</span>
+        </div>
       </div>
       <div class="form-group" *ngIf="!esDiaUnico">
         <label>Fecha de Fin</label>
-        <input type="date" [(ngModel)]="solicitudForm.fecha_fin" (change)="calcularDias()" required
-          [min]="solicitudForm.fecha_inicio || ''" />
+        <div class="custom-date-field" (click)="abrirCalendario('fin')"
+          title="Hacer clic para abrir calendario de feriados">
+          <span class="date-field-text" *ngIf="solicitudForm.fecha_fin">{{ fmtFechaDisplay(solicitudForm.fecha_fin)
+            }}</span>
+          <span class="date-field-placeholder" *ngIf="!solicitudForm.fecha_fin">Seleccionar fecha...</span>
+          <span class="date-field-icon">📅</span>
+        </div>
       </div>
       <div class="form-group form-group-small">
         <label>Días hábiles</label>
@@ -353,10 +389,11 @@
         <div class="firmas-checks">
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.empleado" (change)="actualizarCarta()">
             Empleado</label>
-          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio" (change)="actualizarCarta()">
-            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeDepto" (change)="actualizarCarta()">
             Jefe Depto.</label>
+          <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefeServicio"
+              (change)="actualizarCarta()">
+            Jefe Servicio</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.jefePersonal"
               (change)="actualizarCarta()"> Jefe Personal</label>
           <label class="firma-check"><input type="checkbox" [(ngModel)]="firmas.direccion" (change)="actualizarCarta()">
@@ -373,8 +410,7 @@
       <div class="extension-toggle-row">
         <span class="extension-toggle-label">Incluir fines de semana como hábiles</span>
         <label class="toggle-switch">
-          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana"
-            (ngModelChange)="calcularDias(); actualizarCarta()" />
+          <input type="checkbox" [(ngModel)]="incluyeFinesDeSemana" (ngModelChange)="onToggleFinesDeSemana()" />
           <span class="toggle-slider"></span>
         </label>
       </div>
@@ -390,8 +426,7 @@
         <div class="form-row extension-row">
           <div class="form-group form-group-small">
             <label>Días adicionales</label>
-            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales"
-              max="30" placeholder="1-30"
+            <input type="number" [(ngModel)]="solicitudForm.dias_adicionales" max="30" placeholder="1-30"
               (ngModelChange)="onDiasAdicionalesChange($event)" />
           </div>
           <div class="form-group form-group-small">
@@ -403,13 +438,14 @@
           <div class="form-group">
             <label>Motivo de extensión <span class="req">*</span></label>
             <textarea [(ngModel)]="solicitudForm.motivo_extension" (input)="actualizarCarta()"
-              placeholder="Motivo obligatorio" maxlength="50" style="min-height:38px;" required></textarea>
+              placeholder="Motivo obligatorio" [maxlength]="MAX_MOTIVO_EXTENSION" style="min-height:38px;" required></textarea>
+            <small class="char-contador">{{ (solicitudForm.motivo_extension || '').length }}/{{ MAX_MOTIVO_EXTENSION }}</small>
           </div>
         </div>
       </ng-container>
     </ng-container>
 
-    <div class="form-row">
+    <div class="form-row form-row-estado">
       <div class="form-group">
         <label>Estado</label>
         <select [(ngModel)]="solicitudForm.estado" (ngModelChange)="cambiarEstadoEnEdicion($event)">
@@ -419,14 +455,17 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Observaciones</label>
-        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales" maxlength="75"
-          style="min-height:38px;"></textarea>
+        <label>Observaciones <span class="label-hint">(uso interno, no se imprime)</span></label>
+        <textarea [(ngModel)]="solicitudForm.observaciones" placeholder="Comentarios adicionales"
+          [maxlength]="MAX_OBSERVACIONES" style="min-height:76px;"></textarea>
+        <small class="char-contador">{{ (solicitudForm.observaciones || '').length }}/{{ MAX_OBSERVACIONES }}</small>
       </div>
     </div>
 
     <!-- Vista previa carta en edición — siempre visible -->
-    <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+    <div data-print-container>
+      <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
+    </div>
 
     <div class="form-actions">
       <button class="btn btn-primary" (click)="actualizarPermiso()" [disabled]="loading">Actualizar</button>
@@ -523,8 +562,7 @@
   </div>
 </div>
 <!-- Contenedor oculto para impresión directa desde tabla -->
-<div data-print-container style="position:absolute; left:-9999px; top:-9999px; visibility:hidden;"
-  *ngIf="imprimiendoDesdeTabla">
+<div data-print-container style="position:absolute; left:-9999px; top:-9999px;" *ngIf="imprimiendoDesdeTabla">
   <ng-container *ngTemplateOutlet="cartaTemplate"></ng-container>
 </div>
 
@@ -537,7 +575,7 @@
     </div>
 
     <!-- ── Separador punteado ── -->
-    <div class="carta-separador">✂</div>
+    <div class="carta-separador"></div>
 
     <!-- ── COPIA 2 ── -->
     <div class="carta-copia-bloque">
@@ -571,18 +609,15 @@
       Generado por: <strong>{{ cartaData.autorizadoPor || cartaData.creadoPor || '—' }}</strong>
       <ng-container *ngIf="cartaData.autorizadoEn"> — {{ cartaData.autorizadoEn }}</ng-container>
     </span>
-    <span>Impreso: {{ cartaData.fechaHoraImpresion }}</span>
+    <span *ngIf="cartaData.fechaHoraImpresion">Impreso: {{ cartaData.fechaHoraImpresion }}</span>
   </div>
 
   <div class="carta-hro-destinatario">
     <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() === 'vacaciones'">
-      Señor Director:<br>
-      A: Su Despacho
+      <span>Señor Director. </span>&nbsp;<span>A su despacho</span>
     </ng-container>
     <ng-container *ngIf="cartaData.tipoPermiso.toLowerCase() !== 'vacaciones'">
-      Señores:
-      <strong>Recursos Humanos</strong><br>
-      A: Su Despacho
+      <span>Señores: <strong>Recursos Humanos. </strong></span>&nbsp;<span>A su despacho</span>
     </ng-container>
   </div>
 
@@ -592,26 +627,16 @@
       para solicitarle se sirva autorizarme:
       <span class="carta-underline dias-autorizacion">
         <strong>{{ cartaData.diasEnLetras }} ({{ cartaData.diasSolicitados }}) DÍAS HÁBILES</strong>
-      </span>
-    </p>
-    <p class="carta-tipo-permiso">
-      <span class="carta-underline"><strong>PERMISO POR {{ cartaData.tipoPermiso | uppercase }}</strong></span>
+      </span>,
+      <span class="carta-underline"><strong>PERMISO POR {{ cartaData.tipoPermiso | uppercase }}</strong></span>.
     </p>
     <p class="carta-mensaje">{{ cartaData.mensaje }}</p>
-    <p *ngIf="cartaData.feriadosIncluidos.length > 0" class="carta-feriados">
-      Incluye feriados: {{ cartaData.feriadosIncluidos.join(', ') }}
-    </p>
     <p *ngIf="cartaData.incluyeFinesDeSemana && cartaData.finesDeSemanaCont > 0" class="carta-feriados">
       * Los fines de semana se consideraron como días hábiles en este permiso.
     </p>
     <div class="carta-fechas-row">
-      <span *ngIf="cartaData.fechaInicio === cartaData.fechaFin">
-        Fecha: <span class="fecha-campo">{{ cartaData.fechaInicio }}</span>
-      </span>
-      <ng-container *ngIf="cartaData.fechaInicio !== cartaData.fechaFin">
-        <span>Del {{ diaDeSemana(cartaData.fechaInicio) }} <span class="fecha-campo">{{ cartaData.fechaInicio }}</span></span>
-        <span>Al {{ diaDeSemana(cartaData.fechaFinExtendida || cartaData.fechaFin) }} <span class="fecha-campo">{{ cartaData.fechaFinExtendida || cartaData.fechaFin }}</span></span>
-      </ng-container>
+      Del {{ cartaData.fechaInicio }}
+      al {{ cartaData.fechaFinExtendida || cartaData.fechaFin }}
     </div>
     <p *ngIf="cartaData.motivoExtension" class="carta-feriados">
       Extensión ({{ cartaData.diasAdicionales }}) días, {{ cartaData.motivoExtension }}
@@ -622,8 +647,13 @@
     <p class="carta-atentamente">Atentamente,</p>
   </div>
 
-  <div class="carta-hro-firmas-wrapper">
-    <div class="carta-hro-firmas" *ngFor="let fila of firmasFilas">
+  <!-- Spacer flexible: da espacio cómodo para firmar sin importar resolución/zoom -->
+  <div class="firma-spacer"></div>
+
+  <div class="carta-hro-firmas-wrapper" [ngClass]="'firmas-n' + totalFirmasActivas">
+    <div class="carta-hro-firmas"
+         *ngFor="let fila of firmasFilas; let i = index"
+         [ngClass]="{'fila-1': i === 0, 'fila-2': i === 1}">
       <div class="firma-bloque" *ngFor="let f of fila">
         <div class="firma-linea"></div>
         <strong *ngIf="f.key === 'empleado'">{{ cartaData.nombreEmpleado | uppercase }}</strong>
@@ -633,3 +663,62 @@
     </div>
   </div>
 </ng-template>
+
+<!-- MODAL CALENDARIO CON PUNTOS DE COLOR PARA FERIADOS -->
+<div class="cal-modal-overlay" *ngIf="mostrarCalendarioModal" (click)="cerrarCalendario()">
+  <div class="cal-modal" (click)="$event.stopPropagation()">
+    <div class="cal-modal-header">
+      <h4>
+        Calendario de Feriados -
+        <span class="cal-modo-title">{{ calModoSeleccion === 'inicio' ? 'Seleccionar Fecha de Inicio' : 'Seleccionar
+          Fecha de Fin' }}</span>
+      </h4>
+      <button type="button" class="cal-close-btn" (click)="cerrarCalendario()">×</button>
+    </div>
+
+    <div class="cal-nav">
+      <button type="button" class="btn btn-secondary btn-small nav-arrow-btn" (click)="calMesAnterior()"
+        title="Mes anterior">←</button>
+
+      <div class="cal-selects-group">
+        <select [(ngModel)]="calMonth" (ngModelChange)="onCalNavChange()" class="cal-select-mes">
+          <option *ngFor="let mName of nombresMeses; let idx = index" [ngValue]="idx">{{ mName }}</option>
+        </select>
+        <select [(ngModel)]="calYear" (ngModelChange)="onCalNavChange()" class="cal-select-anio">
+          <option *ngFor="let y of anosDisponibles" [ngValue]="y">{{ y }}</option>
+        </select>
+      </div>
+
+      <button type="button" class="btn btn-secondary btn-small nav-arrow-btn" (click)="calMesSiguiente()"
+        title="Mes siguiente">→</button>
+      <button type="button" class="btn btn-outline-primary btn-small btn-hoy" (click)="irAHoy()"
+        title="Ir al mes actual">Hoy</button>
+    </div>
+
+    <div class="cal-grid-header">
+      <span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span>
+    </div>
+
+    <div class="cal-grid-body">
+      <div *ngFor="let cell of calCeldasCache" class="cal-day-cell" [class.cal-empty]="!cell.dia"
+        [class.cal-fin-semana]="cell.esFinSemana && cell.dia"
+        [class.cal-disabled]="cell.dia && cell.esFinSemana && !incluyeFinesDeSemana" [class.cal-inicio]="cell.esInicio"
+        [class.cal-fin]="cell.esFin" [class.cal-en-rango]="cell.enRango" [class.cal-hoy]="cell.esHoy"
+        (click)="cell.dia && (!cell.esFinSemana || incluyeFinesDeSemana) && seleccionarDiaCalendario(cell.dia)">
+        <span *ngIf="cell.dia" class="cal-num">{{ cell.dia }}</span>
+
+        <!-- Punto de color para Feriado -->
+        <span *ngIf="cell.feriado" class="cal-feriado-dot" [class.dot-condicional]="cell.feriado.esCondicional"
+          [title]="cell.feriado.nombre">
+          <span class="dot-indicator"></span>
+        </span>
+        <span *ngIf="cell.feriado" class="cal-feriado-name" [title]="cell.feriado.nombre">{{ cell.feriado.nombre
+          }}</span>
+      </div>
+    </div>
+
+    <div class="cal-modal-footer">
+      <button type="button" class="btn btn-secondary btn-small" (click)="cerrarCalendario()">Cerrar</button>
+    </div>
+  </div>
+</div>
