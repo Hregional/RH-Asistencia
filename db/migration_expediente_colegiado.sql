@@ -14,6 +14,8 @@ CREATE TABLE `colegios_profesionales` (
   UNIQUE KEY `uk_colegio_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- rollback DROP TABLE IF EXISTS `colegios_profesionales`;
+
 -- changeset adolfo:05b_seed_colegios_profesionales
 -- comment: Carga inicial de colegios profesionales
 INSERT IGNORE INTO `colegios_profesionales` (`nombre`, `siglas`) VALUES
@@ -29,6 +31,21 @@ INSERT IGNORE INTO `colegios_profesionales` (`nombre`, `siglas`) VALUES
   ('Colegio de Profesionales de las Ciencias Económicas', 'C. Económicas'),
   ('Colegio de Humanidades de Guatemala', 'Humanidades'),
   ('Colegio de Arquitectos de Guatemala', 'Arquitectos');
+
+-- rollback DELETE FROM `colegios_profesionales` WHERE `nombre` IN (
+-- rollback   'Colegio de Médicos y Cirujanos de Guatemala',
+-- rollback   'Colegio de Profesionales de Enfermería de Guatemala',
+-- rollback   'Colegio de Químicos y Farmacéuticos de Guatemala',
+-- rollback   'Colegio Estomatológico de Guatemala',
+-- rollback   'Colegio de Psicólogos de Guatemala',
+-- rollback   'Colegio de Médicos Veterinarios y Zootecnistas',
+-- rollback   'Colegio de Abogados y Notarios de Guatemala',
+-- rollback   'Colegio de Ingenieros de Guatemala',
+-- rollback   'Colegio de Ingenieros Químicos de Guatemala',
+-- rollback   'Colegio de Profesionales de las Ciencias Económicas',
+-- rollback   'Colegio de Humanidades de Guatemala',
+-- rollback   'Colegio de Arquitectos de Guatemala'
+-- rollback );
 
 -- changeset adolfo:05c_agregar_expediente_colegiado_empleados
 -- comment: Codigo interno de expediente fisico y numero de colegiado (unico por colegio)
@@ -48,3 +65,11 @@ ALTER TABLE empleados
   ADD UNIQUE KEY `uk_codigo_expediente` (`codigo_expediente`),
   ADD UNIQUE KEY `uk_colegio_numero` (`colegio_id`, `numero_colegiado`),
   ADD CONSTRAINT `fk_emp_colegio` FOREIGN KEY (`colegio_id`) REFERENCES `colegios_profesionales` (`id`);
+
+-- rollback ALTER TABLE empleados
+-- rollback   DROP FOREIGN KEY `fk_emp_colegio`,
+-- rollback   DROP INDEX `uk_colegio_numero`,
+-- rollback   DROP INDEX `uk_codigo_expediente`,
+-- rollback   DROP COLUMN `numero_colegiado`,
+-- rollback   DROP COLUMN `colegio_id`,
+-- rollback   DROP COLUMN `codigo_expediente`;
